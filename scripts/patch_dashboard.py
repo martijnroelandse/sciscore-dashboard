@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "SciScore_journal_dashboard.html"
-GROUP_MAP_JS = Path("/tmp/group_map.js")
+GROUP_MAP_PATH = ROOT / "scripts" / "group_map.json"
 
 EXTRA_CSS = """
   /* HERO RTI */
@@ -536,9 +536,18 @@ async function generatePPTX() {
 '''
 
 
+def format_group_map_js(group_map: dict) -> str:
+    lines = ["const GROUP_MAP = {"]
+    for pub in sorted(group_map):
+        lines.append(f'  {json.dumps(pub)}: {json.dumps(group_map[pub])},')
+    lines.append("};")
+    return "\n".join(lines)
+
+
 def main():
     content = HTML.read_text(encoding="utf-8")
-    group_map = GROUP_MAP_JS.read_text(encoding="utf-8").strip()
+    group_map = json.loads(GROUP_MAP_PATH.read_text(encoding="utf-8"))
+    group_map_js = format_group_map_js(group_map)
 
     # CSS
     content = content.replace("  .export-btn:disabled { opacity: 0.5; cursor: default; }\n</style>",
@@ -557,7 +566,7 @@ def main():
     # JS: replace from const YEARS through end of generatePPTX
     content = re.sub(
         r'\nconst YEARS = \[.*?</script>',
-        '\n' + group_map + '\n\n' + NEW_JS.strip() + '\n\n</script>',
+        '\n' + group_map_js + '\n\n' + NEW_JS.strip() + '\n\n</script>',
         content,
         count=1,
         flags=re.DOTALL,
