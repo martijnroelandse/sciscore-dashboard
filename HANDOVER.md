@@ -1,25 +1,71 @@
-# Handover: PPTX Export Fix
+# SciScore Journal Dashboard — Handover
 
-## Problem
-Export button throws `PptxGenJS is not defined` (and now `Could not load PptxGenJS from any CDN`).
+## Live site
 
-## What's been done
-- Removed the static `<script src>` tag for pptxgenjs (was failing silently at page load)
-- Added lazy-loading in `generatePPTX()` via `ensurePptxGenJS()` with jsdelivr → unpkg fallback
-- Both CDNs are failing — likely a network/CORS issue specific to the runtime environment
+https://martijnroelandse.github.io/sciscore-dashboard/SciScore_journal_dashboard.html
 
-## What needs fixing
-The CDN URLs need to be verified. Open the dashboard in a browser with DevTools → Network tab, click Export, and check which URL fails and why (CORS? 404? timeout?).
+Deployed via GitHub Pages from `main`.
 
-Candidate URLs to test:
-- `https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundled.js`
-- `https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundled.js`
-- `https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundled.js` (no pinned version)
+## Original vision (three options)
 
-If all CDNs fail, the fallback is to bundle pptxgenjs inline: `npm install pptxgenjs`, copy `node_modules/pptxgenjs/dist/pptxgen.bundled.js` into the repo, and reference it locally.
+| # | Approach | Status |
+|---|----------|--------|
+| 1 | Google Sheet + Apps Script → Slides | Skipped — PPTX export in dashboard covers meeting workflow |
+| 2 | Self-contained HTML dashboard | **Built** |
+| 3 | Live Cowork/BigQuery dashboard | Future prototype |
 
-## File
-`SciScore_journal_dashboard.html` — single file, all JS/CSS/data inline. Export logic starts at `function loadScript` (~line 524).
+## Features
 
-## Global name
-The browser bundle exposes `window.PptxGenJS` (capital G, capital JS). The code at line 568 does `new PptxGenJS()` — this is correct assuming the bundle loads.
+| Feature | Status |
+|---------|--------|
+| Publisher group filter (43 groups, sales-facing rollups) | Done |
+| Publisher filter + journal search | Done |
+| Hero RTI metric + collapsible detail panels | Done |
+| RTI trend, study design radar, resource bars | Done |
+| PPTX export (publisher or whole group) | Done |
+| GitHub Pages hosting | Done |
+
+## Publisher groups
+
+`GROUP_MAP` in the HTML maps 537 publishers → 43 groups. Major rollups:
+
+- Springer Nature, Elsevier, Wiley (+ Hindawi), Taylor & Francis, SAGE, Wolters Kluwer, Oxford, etc.
+- US Society & Association Publishers (24 societies)
+- Independent & Society Publishers (small publishers bucket)
+- Publishers with ≥5 journals keep their own group name
+
+To adjust groupings, edit `scripts/patch_dashboard.py` (`EXPLICIT` dict) and re-run the patch.
+
+## PPTX export
+
+- Select a **publisher** or **publisher group**, then click **Export Report**.
+- Lazy-loads PptxGenJS from `pptxgen.bundle.js` (not `bundled.js` — that URL 404s).
+- Group export: all journals in the group, one slide each, sorted by RTI.
+
+## How to run locally
+
+```bash
+open SciScore_journal_dashboard.html
+# or
+python3 -m http.server 8080
+```
+
+## Regenerating after CSV update
+
+1. Replace embedded `DATA` in the HTML (from `2026_sciscore_v3` enriched CSV).
+2. Run `python3 scripts/patch_dashboard.py` to re-apply GROUP_MAP and UI code.
+
+## Path to Option 3
+
+1. Scheduled SQL from `2026_sciscore_v3` → BigQuery/API
+2. Replace embedded JSON with `fetch()` on load
+3. Add `publisher_grouped` column from Sheet as source of truth for GROUP_MAP
+4. Cowork artifact: same UI, live data
+
+## Key files
+
+```
+SciScore_journal_dashboard.html   # app + embedded data
+scripts/patch_dashboard.py        # GROUP_MAP + UI patcher
+HANDOVER.md                       # this file
+```
