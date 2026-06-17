@@ -19,11 +19,24 @@ Deployed via GitHub Pages from `main`.
 | Feature | Status |
 |---------|--------|
 | Publisher group filter (43 groups, sales-facing rollups) | Done |
+| **Aggregated publisher/group dashboard** (portfolio RTI, trends, journal table) | Done |
 | Publisher filter + journal search | Done |
 | Hero RTI metric + collapsible detail panels | Done |
 | RTI trend, study design radar, resource bars | Done |
 | PPTX export (publisher or whole group) | Done |
 | GitHub Pages hosting | Done |
+
+## Aggregated publisher dashboard
+
+When a **publisher** or **publisher group** is selected (and no journal is selected), the main panel shows a portfolio overview:
+
+- Paper-weighted portfolio RTI and KPIs for the selected year
+- RTI trend across years (all journals combined)
+- Aggregated study design radar and resource findability bars
+- Ranked journal table — click any row to drill down
+- **← overview** breadcrumb when viewing a single journal
+
+Metrics are weighted by paper count per journal per year.
 
 ## Publisher groups
 
