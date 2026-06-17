@@ -53,7 +53,8 @@ To adjust groupings, edit `scripts/group_map.json` (see also `normalize_data.py`
 
 - Select a **publisher** or **publisher group**, then click **Export Report**.
 - Lazy-loads PptxGenJS from `pptxgen.bundle.js` (not `bundled.js` — that URL 404s).
-- Group export: all journals in the group, one slide each, sorted by RTI.
+- Deck structure: title → **portfolio overview** (RTI, trend chart, study design & resources) → **journal rankings** → per journal: **RTI timeline** + latest-year detail slide.
+- Group export: all journals in the group, sorted by RTI.
 
 ## How to run locally
 
