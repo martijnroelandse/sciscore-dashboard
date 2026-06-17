@@ -54,7 +54,7 @@ To adjust groupings, edit `scripts/group_map.json` (see also `normalize_data.py`
 - Select a **publisher** or **publisher group**, then click **Export Report**.
 - Lazy-loads PptxGenJS from `pptxgen.bundle.js` (not `bundled.js` — that URL 404s).
 - Uses **SciScore slide masters** (navy header, blue accent, footer logo) from `design/` branding assets.
-- Deck structure: title → **portfolio overview** (RTI, trend chart, study design & resources) → **journal rankings** → per journal: **RTI timeline** + latest-year detail slide.
+- Deck structure: title → **portfolio overview** (RTI + trend) → **study design & resources** → **journal rankings** → per journal: **RTI timeline** + latest-year detail slide.
 - Group export: all journals in the group, sorted by RTI.
 
 ### Branding (`design/` + template)

@@ -6,6 +6,7 @@ import base64
 import json
 import mimetypes
 import re
+import struct
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -82,6 +83,26 @@ def _data_uri(path: Path) -> str:
     mime = mime or "application/octet-stream"
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:{mime};base64,{encoded}"
+
+
+def _image_dims(path: Path) -> tuple[int, int] | None:
+    try:
+        if path.suffix.lower() == ".png":
+            with path.open("rb") as f:
+                f.read(16)
+                return struct.unpack(">II", f.read(8))
+        if path.suffix.lower() in {".jpg", ".jpeg"}:
+            with path.open("rb") as f:
+                f.read(2)
+                while True:
+                    marker, size = struct.unpack(">HH", f.read(4))
+                    if marker == 0xFFC0:
+                        f.read(1)
+                        return struct.unpack(">HH", f.read(4))[1::-1]
+                    f.read(size - 2)
+    except (OSError, struct.error):
+        pass
+    return None
 
 
 def _pick_logo(files: list[Path], prefer_white: bool) -> Path | None:
@@ -255,6 +276,9 @@ def collect_brand() -> dict:
             if path.suffix.lower() == ".svg" or path.stat().st_size > 250_000:
                 continue
             spec["data"] = _data_uri(path)
+            dims = _image_dims(path)
+            if dims:
+                spec["width"], spec["height"] = dims
 
     return brand
 
