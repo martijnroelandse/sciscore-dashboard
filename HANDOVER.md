@@ -53,8 +53,27 @@ To adjust groupings, edit `scripts/group_map.json` (see also `normalize_data.py`
 
 - Select a **publisher** or **publisher group**, then click **Export Report**.
 - Lazy-loads PptxGenJS from `pptxgen.bundle.js` (not `bundled.js` — that URL 404s).
+- Uses **SciScore slide masters** (navy header, blue accent, footer logo) from `design/` branding assets.
 - Deck structure: title → **portfolio overview** (RTI, trend chart, study design & resources) → **journal rankings** → per journal: **RTI timeline** + latest-year detail slide.
 - Group export: all journals in the group, sorted by RTI.
+
+### Branding (`design/` + template)
+
+Place assets in the repo, then run:
+
+```bash
+python3 scripts/embed_brand_assets.py
+```
+
+| Path | Purpose |
+|------|---------|
+| `design/*template*.pptx` | Source template — theme colours and embedded media are extracted |
+| `design/logos/` | Logo PNG/SVG (white/reverse variant for title slide, colour for content footer) |
+| `design/icons/` | Optional metric icons (matched by filename: sex, random, antibody, tool, …) |
+
+The script writes `scripts/brand_config.json` and patches `BRAND_CONFIG` into the HTML (embedded base64 for small images). At export time, any remaining assets are fetched from `design/` on GitHub Pages.
+
+**Note:** PptxGenJS cannot import an existing `.pptx` as-is; the template is used to extract colours/logos, and slide masters are defined to match SciScore branding.
 
 ## How to run locally
 
@@ -89,6 +108,9 @@ To adjust groupings, edit `scripts/group_map.json` and re-run `normalize_data.py
 
 ```
 SciScore_journal_dashboard.html   # app + embedded data
+design/                           # template PPTX, logos, icons
+scripts/embed_brand_assets.py     # extract branding → HTML
+scripts/brand_config.json         # generated brand manifest
 scripts/normalize_data.py         # dedupe journals + SN sub-brands
 scripts/group_map.json            # publisher → group mappings
 scripts/patch_dashboard.py        # GROUP_MAP + UI patcher
