@@ -67,9 +67,9 @@ python3 scripts/embed_brand_assets.py
 
 | Path | Purpose |
 |------|---------|
-| `design/*template*.pptx` | Source template — theme colours and embedded media are extracted |
-| `design/logos/` | Logo PNG/SVG (white/reverse variant for title slide, colour for content footer) |
-| `design/icons/` | Optional metric icons (matched by filename: sex, random, antibody, tool, …) |
+| `SciScore template.pptx` (repo root) or `design/*template*.pptx` | Source template — theme colours extracted |
+| `Design/` or `design/logos/` | Logo PNG/SVG (SciScore white/black variants for slides) |
+| `Design/PNGs for slides/` or `design/icons/` | Metric icons (matched by filename) |
 
 The script writes `scripts/brand_config.json` and patches `BRAND_CONFIG` into the HTML (embedded base64 for small images). At export time, any remaining assets are fetched from `design/` on GitHub Pages.
 
