@@ -1,0 +1,16 @@
+{
+  "colors": {
+    "blue": "29ABE2",
+    "navy": "0D1B3E",
+    "white": "FFFFFF",
+    "light": "F0F5F8",
+    "muted": "7A9BBF",
+    "text": "333333"
+  },
+  "fonts": {
+    "face": "Segoe UI"
+  },
+  "images": {},
+  "icons": {},
+  "template": null
+}
