@@ -47,7 +47,7 @@ Metrics are weighted by paper count per journal per year.
 - Independent & Society Publishers (small publishers bucket)
 - Publishers with ≥5 journals keep their own group name
 
-To adjust groupings, edit `scripts/patch_dashboard.py` (`EXPLICIT` dict) and re-run the patch.
+To adjust groupings, edit `scripts/group_map.json` (see also `normalize_data.py` for Springer Nature sub-brand rules).
 
 ## PPTX export
 
@@ -66,7 +66,16 @@ python3 -m http.server 8080
 ## Regenerating after CSV update
 
 1. Replace embedded `DATA` in the HTML (from `2026_sciscore_v3` enriched CSV).
-2. Run `python3 scripts/patch_dashboard.py` to re-apply GROUP_MAP and UI code.
+2. Run `python3 scripts/normalize_data.py` to deduplicate journal names and split Springer Nature into BMC / Nature Portfolio / Springer Nature sub-publishers.
+3. Run `python3 scripts/patch_dashboard.py` to re-apply GROUP_MAP and UI code.
+
+### Data normalization (`normalize_data.py`)
+
+- **Journal deduplication:** merges case-insensitive duplicates (e.g. `Blood Research` / `Blood research`) into one entry; year data is kept from the row with more papers per year; canonical name prefers title case.
+- **Springer Nature sub-brands:** journals formerly under publisher `Springer Nature` are reassigned by journal name prefix — `BMC …` → BMC, `Nature …` / `Nature` → Nature Portfolio, remainder → Springer Nature. All roll up to the **Springer Nature** publisher group via `scripts/group_map.json`.
+- **Springer Publishing Company** is not part of Springer Nature (removed from that group).
+
+To adjust groupings, edit `scripts/group_map.json` and re-run `normalize_data.py` or `patch_dashboard.py` as needed.
 
 ## Path to Option 3
 
@@ -79,6 +88,8 @@ python3 -m http.server 8080
 
 ```
 SciScore_journal_dashboard.html   # app + embedded data
+scripts/normalize_data.py         # dedupe journals + SN sub-brands
+scripts/group_map.json            # publisher → group mappings
 scripts/patch_dashboard.py        # GROUP_MAP + UI patcher
 HANDOVER.md                       # this file
 ```
