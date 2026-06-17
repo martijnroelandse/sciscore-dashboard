@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "SciScore_journal_dashboard.html"
-DESIGN = ROOT / "design"
+DESIGN_DIRS = [ROOT / "design", ROOT / "Design"]
 BRAND_JSON = ROOT / "scripts" / "brand_config.json"
 
 NS = {
@@ -87,46 +87,134 @@ def _data_uri(path: Path) -> str:
 def _pick_logo(files: list[Path], prefer_white: bool) -> Path | None:
     if not files:
         return None
-    ranked = sorted(files, key=lambda p: p.name.lower())
+    sciscore = [p for p in files if "sciscore" in p.name.lower()]
+    pool = sciscore or files
+    ranked = sorted(pool, key=lambda p: p.name.lower())
     if prefer_white:
         for p in ranked:
             n = p.name.lower()
             if any(k in n for k in ("white", "light", "reverse", "inv")):
                 return p
+    else:
+        for p in ranked:
+            n = p.name.lower()
+            if "black" in n:
+                return p
+        for p in ranked:
+            if "white" not in p.name.lower():
+                return p
     for p in ranked:
         n = p.name.lower()
-        if "logo" in n and not any(k in n for k in ("white", "light", "reverse", "inv", "icon")):
-            return p
+        if any(k in n for k in ("white", "light", "reverse", "inv")):
+            continue
+        return p
     return ranked[0]
 
 
 def _icon_key(name: str) -> str:
     n = name.lower()
+    explicit = {
+        "preclinicalresearch": "iacuc",
+        "protocolidentifierssvg": "antibody",
+        "replicate": "random",
+        "codeinformation": "tool",
+        "review": "blind",
+        "report": "power",
+        "journalarticles": "organism",
+        "globe": "organism",
+        "casestudy": "irb",
+        "copy": "cell",
+        "clock": "power",
+        "corrections": "sex",
+        "submit": "irb",
+    }
+    stem = Path(name).stem.lower()
+    if stem in explicit:
+        return explicit[stem]
     rules = [
         ("sex", ("sex", "gender")),
         ("power", ("power", "pwr")),
-        ("random", ("random", "rand")),
-        ("blind", ("blind",)),
-        ("irb", ("irb", "ethic")),
-        ("iacuc", ("iacuc", "animal")),
-        ("antibody", ("antibod", "ab", "rrid")),
-        ("organism", ("organism", "model")),
-        ("cell", ("cell",)),
-        ("tool", ("tool", "software")),
+        ("random", ("random", "rand", "replicate")),
+        ("blind", ("blind", "review")),
+        ("irb", ("irb", "ethic", "casestudy", "submit")),
+        ("iacuc", ("iacuc", "animal", "preclinical")),
+        ("antibody", ("antibod", "rrid", "protocol")),
+        ("organism", ("organism", "model", "globe", "journal")),
+        ("cell", ("cell", "copy")),
+        ("tool", ("tool", "software", "code")),
     ]
     for key, parts in rules:
         if any(p in n for p in parts):
             return key
-    return Path(name).stem.lower()
+    return stem
+
+
+def _design_roots() -> list[Path]:
+    return [d for d in DESIGN_DIRS if d.is_dir()]
+
+
+def _glob_design(pattern: str) -> list[Path]:
+    found: list[Path] = []
+    for root in [ROOT, *_design_roots()]:
+        found.extend(root.glob(pattern))
+        for d in _design_roots():
+            found.extend(d.glob(pattern))
+            found.extend(d.glob(f"**/{pattern}"))
+    return sorted({p.resolve() for p in found if p.is_file()})
 
 
 def find_template() -> Path | None:
-    candidates: list[Path] = []
-    for pattern in ("*template*.pptx", "*Template*.pptx", "sciscore*.pptx", "SciScore*.pptx"):
-        candidates.extend(DESIGN.glob(pattern))
-        candidates.extend(DESIGN.glob(f"templates/{pattern}"))
-    candidates = sorted({p.resolve() for p in candidates if p.is_file()})
+    candidates = _glob_design("*template*.pptx") + _glob_design("*Template*.pptx")
+    candidates += _glob_design("sciscore*.pptx") + _glob_design("SciScore*.pptx")
+    # Prefer explicit template filename
+    for p in candidates:
+        if "template" in p.name.lower():
+            return p
     return candidates[0] if candidates else None
+
+
+def _find_logos() -> tuple[Path | None, Path | None]:
+    image_ext = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
+    logos: list[Path] = []
+    for d in _design_roots():
+        for sub in ("logos", "New deck icons", ""):
+            base = d / sub if sub else d
+            if not base.is_dir():
+                continue
+            logos.extend(p for p in base.rglob("*") if p.suffix.lower() in image_ext)
+    # Explicit SciScore brand marks
+    for name in (
+        "SciScore 6 years - white.png",
+        "SciScore 6 years - black.png",
+        "New SciScore.png",
+    ):
+        for p in _glob_design(name):
+            logos.append(p)
+    logos = sorted({p.resolve() for p in logos})
+    white = _pick_logo(logos, prefer_white=True)
+    color = _pick_logo(logos, prefer_white=False)
+    if white and color == white:
+        for p in logos:
+            if p != white and "sciscore" in p.name.lower():
+                color = p
+                break
+    return white, color
+
+
+def _collect_icons(brand: dict) -> None:
+    image_ext = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
+    icon_dirs = []
+    for d in _design_roots():
+        icon_dirs.extend([d / "icons", d / "PNGs for slides"])
+    for base in icon_dirs:
+        if not base.is_dir():
+            continue
+        for icon in base.rglob("*"):
+            if icon.suffix.lower() not in image_ext:
+                continue
+            key = _icon_key(icon.name)
+            if key not in brand["icons"]:
+                brand["icons"][key] = {"path": str(icon.relative_to(ROOT))}
 
 
 def collect_brand() -> dict:
@@ -137,11 +225,12 @@ def collect_brand() -> dict:
         theme = _read_theme_colors(template)
         if theme.get("accent1"):
             brand["colors"]["blue"] = theme["accent1"]
-        if theme.get("dk1"):
-            brand["colors"]["navy"] = theme["dk1"]
+        navy = theme.get("dk1")
+        if navy and navy not in ("000000", "FFFFFF"):
+            brand["colors"]["navy"] = navy
         if theme.get("lt1"):
             brand["colors"]["white"] = theme["lt1"]
-        extracted = _extract_template_media(template, DESIGN / "_from_template")
+        extracted = _extract_template_media(template, ROOT / "design" / "_from_template")
         for rel in extracted:
             name = Path(rel).name.lower()
             if "logo" in name:
@@ -149,22 +238,13 @@ def collect_brand() -> dict:
                 if key not in brand["images"]:
                     brand["images"][key] = {"path": rel}
 
-    logo_dir = DESIGN / "logos"
-    if logo_dir.is_dir():
-        logos = [p for p in logo_dir.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".svg", ".webp"}]
-        white = _pick_logo(logos, prefer_white=True)
-        color = _pick_logo(logos, prefer_white=False)
-        if white:
-            brand["images"]["logoWhite"] = {"path": str(white.relative_to(ROOT))}
-        if color and (not white or color != white):
-            brand["images"]["logoColor"] = {"path": str(color.relative_to(ROOT))}
+    white, color = _find_logos()
+    if white:
+        brand["images"]["logoWhite"] = {"path": str(white.relative_to(ROOT))}
+    if color and (not white or color != white):
+        brand["images"]["logoColor"] = {"path": str(color.relative_to(ROOT))}
 
-    icons_dir = DESIGN / "icons"
-    if icons_dir.is_dir():
-        for icon in icons_dir.iterdir():
-            if icon.suffix.lower() not in {".png", ".jpg", ".jpeg", ".svg", ".webp"}:
-                continue
-            brand["icons"][_icon_key(icon.name)] = {"path": str(icon.relative_to(ROOT))}
+    _collect_icons(brand)
 
     # Embed small raster assets for reliable browser export (skip large files).
     for bucket in ("images", "icons"):
@@ -172,7 +252,7 @@ def collect_brand() -> dict:
             path = ROOT / spec["path"]
             if not path.is_file():
                 continue
-            if path.suffix.lower() == ".svg" or path.stat().st_size > 400_000:
+            if path.suffix.lower() == ".svg" or path.stat().st_size > 250_000:
                 continue
             spec["data"] = _data_uri(path)
 
