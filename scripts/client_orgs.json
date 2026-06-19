@@ -1,0 +1,51 @@
+{
+  "label": "SciScore clients",
+  "orgs": {
+    "AACR": {
+      "publishers": ["American Association for Cancer Research Inc."],
+      "journals": []
+    },
+    "APS": {
+      "publishers": ["American Physiological Society"],
+      "journals": []
+    },
+    "AHA": {
+      "publishers": [],
+      "journals": [
+        "American Heart Journal",
+        "Arteriosclerosis, Thrombosis, and Vascular Biology",
+        "Circulation",
+        "Circulation Research",
+        "Circulation Reports",
+        "Circulation. Arrhythmia and Electrophysiology",
+        "Circulation. Cardiovascular Imaging",
+        "Circulation. Cardiovascular Interventions",
+        "Circulation. Genomic and Precision Medicine",
+        "Circulation. Heart Failure",
+        "Hypertension (Dallas, Tex. : 1979)",
+        "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease",
+        "Stroke"
+      ]
+    },
+    "Rockefeller": {
+      "publishers": [],
+      "journals": [
+        "The Journal of Cell Biology",
+        "The Journal of Experimental Medicine",
+        "Life Science Alliance"
+      ]
+    },
+    "FASEB": {
+      "publishers": [],
+      "journals": ["The FASEB Journal", "FASEB BioAdvances"]
+    },
+    "eLife": {
+      "publishers": ["eLife Sciences Publications Ltd"],
+      "journals": []
+    },
+    "ScienceOpen": {
+      "publishers": [],
+      "journals": []
+    }
+  }
+}
