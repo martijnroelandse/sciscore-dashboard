@@ -195,6 +195,12 @@ def find_template() -> Path | None:
 
 
 def _find_logos() -> tuple[Path | None, Path | None]:
+    # Prefer the current hexagon SciScore mark used in client decks.
+    for name in ("New SciScore.png",):
+        hits = sorted({p.resolve() for p in _glob_design(name)})
+        if hits:
+            return hits[0], hits[0]
+
     image_ext = {".png", ".jpg", ".jpeg", ".svg", ".webp"}
     logos: list[Path] = []
     for d in _design_roots():
@@ -203,11 +209,10 @@ def _find_logos() -> tuple[Path | None, Path | None]:
             if not base.is_dir():
                 continue
             logos.extend(p for p in base.rglob("*") if p.suffix.lower() in image_ext)
-    # Explicit SciScore brand marks
+    # Legacy SciScore brand marks
     for name in (
         "SciScore 6 years - white.png",
         "SciScore 6 years - black.png",
-        "New SciScore.png",
     ):
         for p in _glob_design(name):
             logos.append(p)
@@ -290,7 +295,19 @@ def patch_html(brand: dict) -> None:
     replacement = "/* BRAND_CONFIG_START */\n" + block + "\n/* BRAND_CONFIG_END */"
     if not re.search(pattern, content):
         raise ValueError("BRAND_CONFIG markers not found in HTML")
-    HTML.write_text(re.sub(pattern, replacement, content, count=1), encoding="utf-8")
+    content = re.sub(pattern, replacement, content, count=1)
+    logo_data = (
+        brand.get("images", {}).get("logoColor", {}).get("data")
+        or brand.get("images", {}).get("logoWhite", {}).get("data")
+    )
+    if logo_data:
+        content = re.sub(
+            r'(<img class="logo-img" src=")[^"]+(")',
+            rf"\1{logo_data}\2",
+            content,
+            count=1,
+        )
+    HTML.write_text(content, encoding="utf-8")
 
 
 def main() -> None:
