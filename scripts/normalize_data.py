@@ -12,7 +12,7 @@ HTML = ROOT / "SciScore_journal_dashboard.html"
 GROUP_MAP_PATH = ROOT / "scripts" / "group_map.json"
 
 SN_GROUP = "Springer Nature"
-SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "Springer Nature")
+SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
 
 
 def extract_json_block(content: str, marker: str) -> dict:
@@ -75,6 +75,9 @@ def dedupe_journals(journals: dict) -> tuple[dict, dict[str, str]]:
 
 
 def sn_sub_brand(journal_name: str) -> str:
+    upper = journal_name.upper()
+    if upper.startswith("EMBO ") or upper == "EMBO" or upper.startswith("THE EMBO "):
+        return "EMBO"
     if journal_name.startswith("BMC ") or journal_name == "BMC":
         return "BMC"
     if journal_name.startswith("Nature ") or journal_name == "Nature":
@@ -85,10 +88,18 @@ def sn_sub_brand(journal_name: str) -> str:
 def apply_sn_sub_brands(journals: dict) -> int:
     changed = 0
     for journal, entry in journals.items():
-        if entry.get("pub") != "Springer Nature":
-            continue
         brand = sn_sub_brand(journal)
-        if brand != entry["pub"]:
+        if brand == SN_GROUP:
+            continue
+        pub = entry.get("pub") or ""
+        if brand == "EMBO":
+            if pub != "EMBO":
+                entry["pub"] = "EMBO"
+                changed += 1
+            continue
+        if pub != "Springer Nature":
+            continue
+        if brand != pub:
             entry["pub"] = brand
             changed += 1
     return changed
