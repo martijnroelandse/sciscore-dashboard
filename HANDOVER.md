@@ -87,8 +87,15 @@ python3 -m http.server 8080
 
 1. Replace embedded `DATA` in the HTML (from `2026_sciscore_v3` enriched CSV).
 2. Run `python3 scripts/normalize_data.py` to deduplicate journal names and split Springer Nature into BMC / Nature Portfolio / Springer Nature sub-publishers.
-3. Place `2026_sciscore_v3.xlsx` in `data/` (must include a `by_year` sheet with all-journal averages).
-4. Run `python3 scripts/embed_benchmarks.py` to embed `by_year` benchmarks and SciScore client-org benchmarks (AACR, APS, AHA, Rockefeller, FASEB, eLife; journal lists in `scripts/client_orgs.json`).
+3. Place `2026_sciscore_v3.xlsx` in `data/` (must include a `by_year` sheet with all-journal averages). The file is gitignored — keep it local only.
+4. Install `openpyxl` if needed, then embed benchmarks:
+
+```bash
+pip install openpyxl
+python3 scripts/embed_benchmarks.py
+```
+
+The script auto-detects any single `.xlsx` in `data/` if the default filename is missing.
 5. Run `python3 scripts/patch_dashboard.py` to re-apply GROUP_MAP and UI code.
 
 ### Data normalization (`normalize_data.py`)

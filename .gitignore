@@ -2,3 +2,8 @@ design/_from_template/
 node_modules/
 .DS_Store
 **/.DS_Store
+
+# Local SciScore source data (not committed; used by scripts/embed_benchmarks.py)
+data/*.xlsx
+data/*.xls
+data/*.csv

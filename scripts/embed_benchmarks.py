@@ -12,6 +12,24 @@ HTML = ROOT / "SciScore_journal_dashboard.html"
 CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 DEFAULT_XLSX = ROOT / "data" / "2026_sciscore_v3.xlsx"
 
+
+def find_xlsx(path: Path) -> Path | None:
+    if path.exists():
+        return path
+    data_dir = ROOT / "data"
+    if not data_dir.is_dir():
+        return None
+    matches = sorted(data_dir.glob("*.xlsx"))
+    if len(matches) == 1:
+        return matches[0]
+    preferred = [p for p in matches if "sciscore" in p.name.lower() or "2026" in p.name]
+    if len(preferred) == 1:
+        return preferred[0]
+    if matches:
+        print("Multiple .xlsx files in data/ — using the first match:", matches[0], file=sys.stderr)
+        return matches[0]
+    return None
+
 RATE_KEYS = ["r", "sex", "pwr", "rand", "blind", "irb", "iacuc", "ab", "org", "cl", "tool"]
 COUNT_KEYS = ["abn", "orgn", "cln", "tooln"]
 
@@ -121,6 +139,7 @@ def read_by_year_xlsx(path: Path) -> dict[str, dict]:
 
     headers = [str(c) if c is not None else "" for c in rows[0]]
     colmap = map_headers(headers)
+    print("by_year columns mapped:", {k: headers[v] for k, v in sorted(colmap.items(), key=lambda x: x[1])})
     out: dict[str, dict] = {}
     for row in rows[1:]:
         if not row or all(cell is None or str(cell).strip() == "" for cell in row):
@@ -209,22 +228,25 @@ def compute_by_year_fallback(journals: dict) -> dict[str, dict]:
 
 
 def main() -> None:
-    xlsx_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
+    requested = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
+    xlsx_path = find_xlsx(requested)
     content = HTML.read_text(encoding="utf-8")
     data = extract_json_block(content, "DATA")
     journals = data["j"]
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
 
     source = "2026_sciscore_v3.xlsx/by_year"
-    if xlsx_path.exists():
+    if xlsx_path:
         by_year = read_by_year_xlsx(xlsx_path)
+        source = f"{xlsx_path.name}/by_year"
         print(f"Loaded by_year benchmarks from {xlsx_path} ({len(by_year)} years)")
     else:
         by_year = compute_by_year_fallback(journals)
         source = "computed_fallback_from_DATA"
         print(
-            f"WARNING: {xlsx_path} not found — using paper-weighted all-journal averages from embedded DATA.\n"
-            "Place 2026_sciscore_v3.xlsx in data/ and re-run to use the authoritative by_year tab.",
+            f"WARNING: no .xlsx found at {requested} or in data/\n"
+            "Place 2026_sciscore_v3.xlsx in data/ and re-run.\n"
+            "Using paper-weighted all-journal averages from embedded DATA as fallback.",
             file=sys.stderr,
         )
 
