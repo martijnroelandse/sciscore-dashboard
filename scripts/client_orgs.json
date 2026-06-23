@@ -10,7 +10,7 @@
       "journals": []
     },
     "AHA": {
-      "publishers": [],
+      "publishers": ["American Heart Association"],
       "journals": [
         "American Heart Journal",
         "Arteriosclerosis, Thrombosis, and Vascular Biology",
