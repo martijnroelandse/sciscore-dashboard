@@ -11,23 +11,31 @@ SCRIPTS = Path(__file__).resolve().parent
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from html_json import _data_line_span, extract_json_block, replace_const_block
+from html_json import (
+    _data_blob,
+    _data_line_span,
+    extract_json_block,
+    has_merge_conflicts,
+    recover_data_json,
+    replace_const_block,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "SciScore_journal_dashboard.html"
 
 
 def data_block_is_corrupt(content: str) -> bool:
+    if has_merge_conflicts(content):
+        return True
     pos, line_end = _data_line_span(content)
     line = content[pos:line_end]
-    payload = line[len("const DATA = ") :]
-    if payload.endswith(";"):
-        payload = payload[:-1]
-    try:
-        json.loads(payload)
-    except json.JSONDecodeError:
+    if "\nconst GROUP_MAP" in line:
         return True
-    return "\nconst GROUP_MAP" in line
+    try:
+        recover_data_json(_data_blob(content))
+        return False
+    except (json.JSONDecodeError, ValueError):
+        return True
 
 
 def repair_data_block(content: str) -> str:
@@ -63,6 +71,10 @@ def patch_init_hooks(content: str) -> str:
 
 def main() -> None:
     content = HTML.read_text(encoding="utf-8")
+    if has_merge_conflicts(content):
+        from html_json import _merge_conflict_help
+
+        raise SystemExit(_merge_conflict_help())
     if data_block_is_corrupt(content):
         print("Repairing corrupted const DATA block…")
         content = repair_data_block(content)
