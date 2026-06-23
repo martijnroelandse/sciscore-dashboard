@@ -22,8 +22,23 @@ COMPARE_JS = r'''
 let selectedCompareKey = 'all';
 let compareTouched = false;
 
+function benchmarkForKey(year, key) {
+  const bench = BENCHMARK_BY_KEY?.[key]?.[year] ?? null;
+  if (!bench) return null;
+  if (bench.r == null || bench.r >= 1) return bench;
+  if (key === 'all') {
+    const agg = aggregateYear(ALL_JOURNALS, year);
+    return agg?.r != null ? { ...bench, r: agg.r } : bench;
+  }
+  if (key === 'clients') {
+    const agg = aggregateYear(CLIENT_ORG_JOURNALS || [], year);
+    return agg?.r != null ? { ...bench, r: agg.r } : bench;
+  }
+  return bench;
+}
+
 function compareBenchmark(year) {
-  return BENCHMARK_BY_KEY?.[selectedCompareKey]?.[year] ?? null;
+  return benchmarkForKey(year, selectedCompareKey);
 }
 
 function compareLabel() {
@@ -70,12 +85,29 @@ function populateCompareSelect() {
   const sel = document.getElementById('compareSelect');
   if (!sel || !BENCHMARK_CATALOG?.length) return;
   sel.innerHTML = '';
+
+  const topIds = ['all', 'clients'];
+  const topOpts = topIds.map(id => BENCHMARK_CATALOG.find(c => c.id === id)).filter(Boolean);
+  const rest = BENCHMARK_CATALOG.filter(c => !topIds.includes(c.id));
+
+  if (topOpts.length) {
+    const og = document.createElement('optgroup');
+    og.label = 'General';
+    topOpts.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.id;
+      o.textContent = opt.label;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  }
+
   const groups = {};
-  BENCHMARK_CATALOG.forEach(opt => {
+  rest.forEach(opt => {
     if (!groups[opt.group]) groups[opt.group] = [];
     groups[opt.group].push(opt);
   });
-  const groupOrder = ['General', 'Disciplines', 'Clients'];
+  const groupOrder = ['Disciplines', 'Clients'];
   const orderedGroups = [
     ...groupOrder.filter(g => groups[g]),
     ...Object.keys(groups).filter(g => !groupOrder.includes(g)),
