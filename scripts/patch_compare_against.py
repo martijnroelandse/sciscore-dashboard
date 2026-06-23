@@ -47,13 +47,8 @@ function publisherClientOrg() {
 
 function defaultCompareKey() {
   if (selectedJournal) {
-    const org = journalClientOrg(selectedJournal);
-    if (org) return `org:${org}`;
     const discs = DATA.j[selectedJournal]?.disciplines;
     if (discs?.length) return `discipline:${discs[0]}`;
-  } else {
-    const org = publisherClientOrg();
-    if (org) return `org:${org}`;
   }
   return 'all';
 }
@@ -80,7 +75,12 @@ function populateCompareSelect() {
     if (!groups[opt.group]) groups[opt.group] = [];
     groups[opt.group].push(opt);
   });
-  Object.keys(groups).forEach(group => {
+  const groupOrder = ['General', 'Disciplines', 'Clients'];
+  const orderedGroups = [
+    ...groupOrder.filter(g => groups[g]),
+    ...Object.keys(groups).filter(g => !groupOrder.includes(g)),
+  ];
+  orderedGroups.forEach(group => {
     const og = document.createElement('optgroup');
     og.label = group;
     groups[group].forEach(opt => {
