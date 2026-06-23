@@ -12,28 +12,13 @@ HTML = ROOT / "SciScore_journal_dashboard.html"
 CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 DEFAULT_XLSX = ROOT / "data" / "2026_sciscore_v3.xlsx"
 
-
-def find_xlsx(path: Path) -> Path | None:
-    if path.exists():
-        return path
-    data_dir = ROOT / "data"
-    if not data_dir.is_dir():
-        return None
-    matches = sorted(data_dir.glob("*.xlsx"))
-    if len(matches) == 1:
-        return matches[0]
-    preferred = [p for p in matches if "sciscore" in p.name.lower() or "2026" in p.name]
-    if len(preferred) == 1:
-        return preferred[0]
-    if matches:
-        print("Multiple .xlsx files in data/ — using the first match:", matches[0], file=sys.stderr)
-        return matches[0]
-    return None
+# Top-level discipline flags in the xlsx (columns V–AZ).
+DISCIPLINE_COL_START = 22  # V (1-based)
+DISCIPLINE_COL_END = 52    # AZ inclusive (1-based)
 
 RATE_KEYS = ["r", "sex", "pwr", "rand", "blind", "irb", "iacuc", "ab", "org", "cl", "tool"]
 COUNT_KEYS = ["abn", "orgn", "cln", "tooln"]
 
-# Flexible header mapping for the by_year sheet (case-insensitive).
 BY_YEAR_ALIASES: dict[str, list[str]] = {
     "year": ["year", "pub_year", "publication year"],
     "n": ["n", "papers", "paper_count", "papers analysed", "papers analyzed", "count"],
@@ -54,6 +39,32 @@ BY_YEAR_ALIASES: dict[str, list[str]] = {
     "tooln": ["tooln", "tool detections"],
 }
 
+JOURNAL_NAME_ALIASES = [
+    "journal",
+    "journal name",
+    "journal title",
+    "title",
+    "name",
+]
+
+
+def find_xlsx(path: Path) -> Path | None:
+    if path.exists():
+        return path
+    data_dir = ROOT / "data"
+    if not data_dir.is_dir():
+        return None
+    matches = sorted(data_dir.glob("*.xlsx"))
+    if len(matches) == 1:
+        return matches[0]
+    preferred = [p for p in matches if "sciscore" in p.name.lower() or "2026" in p.name]
+    if len(preferred) == 1:
+        return preferred[0]
+    if matches:
+        print("Multiple .xlsx files in data/ — using the first match:", matches[0], file=sys.stderr)
+        return matches[0]
+    return None
+
 
 def extract_json_block(content: str, marker: str) -> dict:
     pattern = rf"const {marker} = (\{{.*?\}});"
@@ -67,7 +78,22 @@ def replace_const_block(content: str, marker: str, data) -> str:
     serialized = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     pattern = rf"const {marker} = .*?;"
     replacement = f"const {marker} = {serialized};"
-    return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
+    if re.search(pattern, content, flags=re.DOTALL):
+        return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
+    raise ValueError(f"Could not find const {marker} in HTML")
+
+
+def insert_or_replace_const_block(content: str, marker: str, data, after_marker: str) -> str:
+    serialized = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
+    pattern = rf"const {marker} = .*?;"
+    replacement = f"const {marker} = {serialized};"
+    if re.search(pattern, content, flags=re.DOTALL):
+        return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
+    anchor = rf"(const {after_marker} = .*?;\n)"
+    match = re.search(anchor, content, flags=re.DOTALL)
+    if not match:
+        raise ValueError(f"Could not find anchor const {after_marker} for inserting {marker}")
+    return content[: match.end()] + replacement + "\n" + content[match.end() :]
 
 
 def norm_header(value) -> str:
@@ -154,6 +180,129 @@ def read_by_year_xlsx(path: Path) -> dict[str, dict]:
     return out
 
 
+def is_truthy_cell(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if not text:
+        return False
+    return text in {"1", "true", "yes", "y", "x", "✓", "✔"} or text not in {"0", "false", "no", "n"}
+
+
+def normalize_journal_name(value) -> str:
+    return re.sub(r"\s+", " ", str(value or "").strip())
+
+
+def detect_journal_name_column(headers: list[str], rows: list[tuple], known_journals: set[str]) -> int | None:
+    known_lower = {name.lower(): name for name in known_journals}
+    best_idx = None
+    best_score = 0
+    search_cols = min(8, len(headers))
+    for idx in range(search_cols):
+        score = 0
+        for row in rows[:500]:
+            if idx >= len(row):
+                continue
+            name = normalize_journal_name(row[idx])
+            if not name:
+                continue
+            if name in known_journals:
+                score += 2
+            elif name.lower() in known_lower:
+                score += 2
+        if score > best_score:
+            best_score = score
+            best_idx = idx
+    return best_idx if best_score >= 5 else None
+
+
+def read_journal_disciplines(path: Path, known_journals: set[str]) -> dict[str, list[str]]:
+    """Read top-level discipline flags from columns V–AZ on the journal metadata sheet."""
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise RuntimeError("openpyxl is required: pip install openpyxl") from exc
+
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    skip = {"by_year", "summary", "readme", "index"}
+    best_sheet = None
+    best_name_col = None
+    best_rows: list[tuple] = []
+    best_headers: list[str] = []
+
+    for sheet_name in wb.sheetnames:
+        if sheet_name.lower() in skip:
+            continue
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < 2:
+            continue
+        headers = [str(c).strip() if c is not None else "" for c in rows[0]]
+        name_col = detect_journal_name_column(headers, rows[1:], known_journals)
+        if name_col is None:
+            continue
+        score = sum(
+            1
+            for row in rows[1:501]
+            if name_col < len(row)
+            and normalize_journal_name(row[name_col]) in known_journals
+        )
+        if score > len(best_rows):
+            best_sheet = sheet_name
+            best_name_col = name_col
+            best_rows = rows
+            best_headers = headers
+
+    if best_sheet is None or best_name_col is None:
+        print("WARNING: could not locate a journal sheet with discipline columns V–AZ", file=sys.stderr)
+        return {}
+
+    disc_start = DISCIPLINE_COL_START - 1
+    disc_end = DISCIPLINE_COL_END
+    discipline_headers = []
+    for idx in range(disc_start, min(disc_end, len(best_headers))):
+        label = str(best_headers[idx] or "").strip()
+        if label:
+            discipline_headers.append((idx, label))
+
+    if not discipline_headers:
+        print(
+            f"WARNING: no discipline headers found in columns V–AZ on sheet '{best_sheet}'",
+            file=sys.stderr,
+        )
+        return {}
+
+    known_lower = {name.lower(): name for name in known_journals}
+    out: dict[str, list[str]] = {}
+    matched = 0
+    for row in best_rows[1:]:
+        if best_name_col >= len(row):
+            continue
+        raw_name = normalize_journal_name(row[best_name_col])
+        if not raw_name:
+            continue
+        journal = raw_name if raw_name in known_journals else known_lower.get(raw_name.lower())
+        if not journal:
+            continue
+        disciplines = []
+        for idx, label in discipline_headers:
+            if idx < len(row) and is_truthy_cell(row[idx]):
+                disciplines.append(label)
+        if disciplines:
+            out[journal] = disciplines
+            matched += 1
+
+    print(
+        f"Disciplines from sheet '{best_sheet}' (columns V–AZ): "
+        f"{matched} journals tagged, {len(discipline_headers)} discipline columns"
+    )
+    return out
+
+
 def aggregate_year(journals: dict, journal_names: list[str], year: str) -> dict | None:
     total_n = 0
     journal_count = 0
@@ -181,6 +330,16 @@ def aggregate_year(journals: dict, journal_names: list[str], year: str) -> dict 
     for key in RATE_KEYS:
         out[key] = weights[key] / denominators[key] if denominators[key] else None
     out.update(counts)
+    return out
+
+
+def benchmarks_for_journals(journals: dict, journal_names: list[str]) -> dict[str, dict]:
+    years = sorted({year for name in journal_names for year in journals.get(name, {}).get("y", {})})
+    out: dict[str, dict] = {}
+    for year in years:
+        agg = aggregate_year(journals, journal_names, year)
+        if agg:
+            out[year] = agg
     return out
 
 
@@ -216,15 +375,83 @@ def resolve_client_journals(journals: dict, client_cfg: dict) -> tuple[list[str]
     return final, per_org
 
 
+def build_discipline_index(journals: dict, journal_disciplines: dict[str, list[str]]) -> dict[str, list[str]]:
+    index: dict[str, list[str]] = {}
+    for journal, disciplines in journal_disciplines.items():
+        if journal not in journals:
+            continue
+        for discipline in disciplines:
+            index.setdefault(discipline, []).append(journal)
+    for discipline in index:
+        index[discipline] = sorted(set(index[discipline]))
+    return index
+
+
+def apply_disciplines_to_data(journals: dict, journal_disciplines: dict[str, list[str]]) -> int:
+    updated = 0
+    for journal, disciplines in journal_disciplines.items():
+        if journal not in journals:
+            continue
+        clean = sorted(set(d.strip() for d in disciplines if d and str(d).strip()))
+        if clean:
+            journals[journal]["disciplines"] = clean
+            updated += 1
+    return updated
+
+
+def build_benchmark_catalog(
+    client_cfg: dict,
+    per_org: dict[str, list[str]],
+    discipline_index: dict[str, list[str]],
+) -> list[dict]:
+    catalog = [
+        {"id": "all", "label": "All journals", "group": "General"},
+        {"id": "clients", "label": client_cfg.get("label", "SciScore clients"), "group": "General"},
+    ]
+    for org in sorted(per_org):
+        if per_org[org]:
+            catalog.append({"id": f"org:{org}", "label": org, "group": "Client orgs"})
+    for discipline in sorted(discipline_index):
+        if discipline_index[discipline]:
+            catalog.append(
+                {
+                    "id": f"discipline:{discipline}",
+                    "label": discipline,
+                    "group": "Disciplines",
+                }
+            )
+    return catalog
+
+
+def build_benchmark_by_key(
+    by_year: dict[str, dict],
+    client_by_year: dict[str, dict],
+    per_org: dict[str, list[str]],
+    journals: dict,
+    discipline_index: dict[str, list[str]],
+) -> dict[str, dict[str, dict]]:
+    out: dict[str, dict[str, dict]] = {"all": by_year, "clients": client_by_year}
+    for org, names in per_org.items():
+        if names:
+            series = benchmarks_for_journals(journals, names)
+            if series:
+                out[f"org:{org}"] = series
+    for discipline, names in discipline_index.items():
+        if names:
+            series = benchmarks_for_journals(journals, names)
+            if series:
+                out[f"discipline:{discipline}"] = series
+    return out
+
+
 def compute_by_year_fallback(journals: dict) -> dict[str, dict]:
-  """Fallback when xlsx is unavailable: paper-weighted all-journal averages."""
-  years = sorted({year for entry in journals.values() for year in entry.get("y", {})})
-  out = {}
-  for year in years:
-      agg = aggregate_year(journals, list(journals.keys()), year)
-      if agg:
-          out[year] = agg
-  return out
+    years = sorted({year for entry in journals.values() for year in entry.get("y", {})})
+    out = {}
+    for year in years:
+        agg = aggregate_year(journals, list(journals.keys()), year)
+        if agg:
+            out[year] = agg
+    return out
 
 
 def main() -> None:
@@ -250,13 +477,19 @@ def main() -> None:
             file=sys.stderr,
         )
 
+    journal_disciplines: dict[str, list[str]] = {}
+    if xlsx_path:
+        journal_disciplines = read_journal_disciplines(xlsx_path, set(journals.keys()))
+        tagged = apply_disciplines_to_data(journals, journal_disciplines)
+        print(f"Applied discipline tags to {tagged} journals in embedded DATA")
+
     client_journal_names, per_org = resolve_client_journals(journals, client_cfg)
-    client_years = sorted({year for name in client_journal_names for year in journals[name].get("y", {})})
-    client_by_year = {}
-    for year in client_years:
-        agg = aggregate_year(journals, client_journal_names, year)
-        if agg:
-            client_by_year[year] = agg
+    client_by_year = benchmarks_for_journals(journals, client_journal_names)
+    discipline_index = build_discipline_index(journals, journal_disciplines)
+    benchmark_by_key = build_benchmark_by_key(
+        by_year, client_by_year, per_org, journals, discipline_index
+    )
+    benchmark_catalog = build_benchmark_catalog(client_cfg, per_org, discipline_index)
 
     meta = {
         "source": source,
@@ -264,6 +497,8 @@ def main() -> None:
         "clientOrgs": list(client_cfg["orgs"].keys()),
         "clientJournalCount": len(client_journal_names),
         "clientJournalsByOrg": {org: len(items) for org, items in per_org.items()},
+        "disciplineCount": len(discipline_index),
+        "disciplinesTaggedJournalCount": len(journal_disciplines),
     }
 
     print("Client org journal counts:")
@@ -272,13 +507,28 @@ def main() -> None:
     missing_orgs = [org for org, items in per_org.items() if not items]
     if missing_orgs:
         print(f"  (no journals matched: {', '.join(missing_orgs)})")
+    if discipline_index:
+        print(f"Discipline benchmarks: {len(discipline_index)} top-level fields")
 
+    content = replace_const_block(content, "DATA", data)
     content = replace_const_block(content, "BY_YEAR_BENCHMARK", by_year)
     content = replace_const_block(content, "CLIENT_ORG_BENCHMARK", client_by_year)
     content = replace_const_block(content, "CLIENT_ORG_META", meta)
     content = replace_const_block(content, "CLIENT_ORG_JOURNALS", client_journal_names)
+    content = insert_or_replace_const_block(
+        content, "CLIENT_ORG_JOURNALS_BY_ORG", per_org, "CLIENT_ORG_JOURNALS"
+    )
+    content = insert_or_replace_const_block(
+        content, "BENCHMARK_CATALOG", benchmark_catalog, "CLIENT_ORG_JOURNALS_BY_ORG"
+    )
+    content = insert_or_replace_const_block(
+        content, "BENCHMARK_BY_KEY", benchmark_by_key, "BENCHMARK_CATALOG"
+    )
     HTML.write_text(content, encoding="utf-8")
-    print(f"Embedded benchmarks for {len(by_year)} corpus years and {len(client_by_year)} client-org years")
+    print(
+        f"Embedded {len(benchmark_catalog)} compare options "
+        f"and {len(benchmark_by_key)} benchmark series"
+    )
 
 
 if __name__ == "__main__":
