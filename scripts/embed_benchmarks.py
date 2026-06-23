@@ -320,19 +320,26 @@ def extract_journal_disciplines(
     return out
 
 
-def read_journal_disciplines_csv(path: Path, known_journals: set[str]) -> dict[str, list[str]]:
+def discipline_order_from_headers(headers: list[str]) -> list[str]:
+    return [label for _, label in discipline_columns(headers)]
+
+
+def read_journal_disciplines_csv(
+    path: Path, known_journals: set[str]
+) -> tuple[dict[str, list[str]], list[str]]:
     with path.open(encoding="utf-8-sig", newline="") as handle:
         rows = [tuple(row) for row in csv.reader(handle)]
     if len(rows) < 2:
-        return {}
+        return {}, []
     headers = [str(c).strip() if c is not None else "" for c in rows[0]]
     data_rows = rows[1:]
     result = extract_journal_disciplines(headers, data_rows, known_journals)
+    order = discipline_order_from_headers(headers)
     print(
         f"Disciplines from {path.name}: {len(result)} journals tagged, "
-        f"{len(discipline_columns(headers))} discipline columns (V–AZ)"
+        f"{len(order)} discipline columns (V–AZ)"
     )
-    return result
+    return result, order
 
 
 def detect_journal_name_column(headers: list[str], rows: list[tuple], known_journals: set[str]) -> int | None:
@@ -397,14 +404,15 @@ def read_journal_disciplines(path: Path, known_journals: set[str]) -> dict[str, 
 
     if best_sheet is None or best_name_col is None:
         print("WARNING: could not locate a journal sheet with discipline columns V–AZ", file=sys.stderr)
-        return {}
+        return {}, []
 
     result = extract_journal_disciplines(best_headers, best_rows[1:], known_journals)
+    order = discipline_order_from_headers(best_headers)
     print(
         f"Disciplines from xlsx sheet '{best_sheet}': {len(result)} journals tagged, "
-        f"{len(discipline_columns(best_headers))} discipline columns (V–AZ)"
+        f"{len(order)} discipline columns (V–AZ)"
     )
-    return result
+    return result, order
 
 
 def aggregate_year(journals: dict, journal_names: list[str], year: str) -> dict | None:
@@ -505,18 +513,15 @@ def apply_disciplines_to_data(journals: dict, journal_disciplines: dict[str, lis
 
 def build_benchmark_catalog(
     client_cfg: dict,
-    per_org: dict[str, list[str]],
     discipline_index: dict[str, list[str]],
+    discipline_order: list[str],
 ) -> list[dict]:
-    catalog = [
+    catalog: list[dict] = [
         {"id": "all", "label": "All journals", "group": "General"},
-        {"id": "clients", "label": client_cfg.get("label", "SciScore clients"), "group": "General"},
     ]
-    for org in sorted(per_org):
-        if per_org[org]:
-            catalog.append({"id": f"org:{org}", "label": org, "group": "Client orgs"})
-    for discipline in sorted(discipline_index):
-        if discipline_index[discipline]:
+    seen: set[str] = set()
+    for discipline in discipline_order:
+        if discipline_index.get(discipline):
             catalog.append(
                 {
                     "id": f"discipline:{discipline}",
@@ -524,22 +529,34 @@ def build_benchmark_catalog(
                     "group": "Disciplines",
                 }
             )
+            seen.add(discipline)
+    for discipline in sorted(discipline_index):
+        if discipline in seen or not discipline_index[discipline]:
+            continue
+        catalog.append(
+            {
+                "id": f"discipline:{discipline}",
+                "label": discipline,
+                "group": "Disciplines",
+            }
+        )
+    catalog.append(
+        {
+            "id": "clients",
+            "label": client_cfg.get("label", "SciScore clients"),
+            "group": "Clients",
+        }
+    )
     return catalog
 
 
 def build_benchmark_by_key(
     by_year: dict[str, dict],
     client_by_year: dict[str, dict],
-    per_org: dict[str, list[str]],
     journals: dict,
     discipline_index: dict[str, list[str]],
 ) -> dict[str, dict[str, dict]]:
     out: dict[str, dict[str, dict]] = {"all": by_year, "clients": client_by_year}
-    for org, names in per_org.items():
-        if names:
-            series = benchmarks_for_journals(journals, names)
-            if series:
-                out[f"org:{org}"] = series
     for discipline, names in discipline_index.items():
         if names:
             series = benchmarks_for_journals(journals, names)
@@ -584,12 +601,17 @@ def main() -> None:
             print(f"Note: skipped xlsx by_year ({exc}); using embedded DATA only")
 
     journal_disciplines: dict[str, list[str]] = {}
+    discipline_order: list[str] = []
     csv_path = find_journal_list_csv()
     if csv_path:
-        journal_disciplines = read_journal_disciplines_csv(csv_path, set(journals.keys()))
+        journal_disciplines, discipline_order = read_journal_disciplines_csv(
+            csv_path, set(journals.keys())
+        )
     elif xlsx_path:
         try:
-            journal_disciplines = read_journal_disciplines(xlsx_path, set(journals.keys()))
+            journal_disciplines, discipline_order = read_journal_disciplines(
+                xlsx_path, set(journals.keys())
+            )
         except Exception as exc:
             print(f"Note: skipped xlsx disciplines ({exc})")
 
@@ -601,9 +623,9 @@ def main() -> None:
     client_by_year = benchmarks_for_journals(journals, client_journal_names)
     discipline_index = build_discipline_index(journals, journal_disciplines)
     benchmark_by_key = build_benchmark_by_key(
-        by_year, client_by_year, per_org, journals, discipline_index
+        by_year, client_by_year, journals, discipline_index
     )
-    benchmark_catalog = build_benchmark_catalog(client_cfg, per_org, discipline_index)
+    benchmark_catalog = build_benchmark_catalog(client_cfg, discipline_index, discipline_order)
 
     meta = {
         "source": source,
