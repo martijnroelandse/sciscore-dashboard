@@ -10,15 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "SciScore_journal_dashboard.html"
 GROUP_MAP_PATH = ROOT / "scripts" / "group_map.json"
+CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 
 SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
-PUBLISHER_OVERRIDES = {
-    "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease": "American Heart Association",
-    "The Journal of Cell Biology": "Rockefeller University Press",
-    "The Journal of Experimental Medicine": "Rockefeller University Press",
-    "The FASEB Journal": "Federation of American Societies for Experimental Biology",
-}
 
 
 def extract_json_block(content: str, marker: str) -> dict:
@@ -111,15 +106,23 @@ def apply_sn_sub_brands(journals: dict) -> int:
     return changed
 
 
-def apply_publisher_overrides(journals: dict) -> int:
+def apply_client_publisher_overrides(journals: dict, client_cfg: dict) -> tuple[int, dict[str, list[str]]]:
     changed = 0
-    for journal, publisher in PUBLISHER_OVERRIDES.items():
-        if journal not in journals:
+    missing: dict[str, list[str]] = {}
+    for org, spec in client_cfg.get("orgs", {}).items():
+        pubs = spec.get("publishers", [])
+        org_journals = spec.get("journals", [])
+        if len(pubs) != 1 or not org_journals:
             continue
-        if journals[journal].get("pub") != publisher:
-            journals[journal]["pub"] = publisher
-            changed += 1
-    return changed
+        publisher = pubs[0]
+        for journal in org_journals:
+            if journal not in journals:
+                missing.setdefault(org, []).append(journal)
+                continue
+            if journals[journal].get("pub") != publisher:
+                journals[journal]["pub"] = publisher
+                changed += 1
+    return changed, missing
 
 
 def rebuild_publishers(journals: dict) -> dict[str, list[str]]:
@@ -161,9 +164,10 @@ def main() -> None:
     data = extract_json_block(content, "DATA")
     group_map = json.loads(GROUP_MAP_PATH.read_text(encoding="utf-8"))
 
+    client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
     journals_before = len(data["j"])
     journals, renamed = dedupe_journals(data["j"])
-    override_updates = apply_publisher_overrides(journals)
+    override_updates, missing_overrides = apply_client_publisher_overrides(journals, client_cfg)
     sn_split = apply_sn_sub_brands(journals)
     publishers = rebuild_publishers(journals)
     group_map = update_group_map(group_map, list(publishers.keys()))
@@ -189,6 +193,8 @@ def main() -> None:
     sn_pubs = [p for p in publishers if p in SN_SUB_BRANDS or p == "Springer Nature Korea"]
     print(f"Journals: {journals_before} -> {len(journals)} ({len(renamed)} merged)")
     print(f"Publisher overrides applied: {override_updates}")
+    for org, names in sorted(missing_overrides.items()):
+        print(f"  {org}: {len(names)} configured journal(s) not in DATA")
     print(f"Springer Nature sub-brand reassignment: {sn_split} journals")
     print(f"SN group publishers: {', '.join(f'{p} ({len(publishers[p])})' for p in sorted(sn_pubs))}")
     blood = [n for n in journals if n.lower() == "blood research"]

@@ -12,19 +12,20 @@
     "AHA": {
       "publishers": ["American Heart Association"],
       "journals": [
-        "American Heart Journal",
         "Arteriosclerosis, Thrombosis, and Vascular Biology",
         "Circulation",
         "Circulation Research",
-        "Circulation Reports",
+        "Hypertension (Dallas, Tex. : 1979)",
+        "Stroke",
+        "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease",
         "Circulation. Arrhythmia and Electrophysiology",
-        "Circulation. Cardiovascular Imaging",
-        "Circulation. Cardiovascular Interventions",
         "Circulation. Genomic and Precision Medicine",
         "Circulation. Heart Failure",
-        "Hypertension (Dallas, Tex. : 1979)",
-        "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease",
-        "Stroke"
+        "Circulation. Cardiovascular Imaging",
+        "Circulation. Cardiovascular Interventions",
+        "Circulation: Population Health and Outcomes",
+        "Stroke: Vascular and Interventional Neurology",
+        "Annals of Internal Medicine: Clinical Cases"
       ]
     },
     "Rockefeller": {
@@ -32,6 +33,8 @@
       "journals": [
         "The Journal of Cell Biology",
         "The Journal of Experimental Medicine",
+        "The Journal of General Physiology",
+        "Journal of Human Immunity",
         "Life Science Alliance"
       ]
     },
