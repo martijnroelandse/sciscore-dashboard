@@ -1,7 +1,21 @@
 #!/usr/bin/env python3
-"""Embed benchmark data from 2026_sciscore_v3 (by_year tab) into the dashboard HTML."""
+"""Rebuild Compare against benchmarks from embedded dashboard DATA.
+
+The HTML file already contains all journal metrics in ``const DATA``.
+You do **not** need the xlsx to run this script.
+
+What this script does:
+  1. Computes benchmark series (all journals, client orgs, disciplines) from DATA
+  2. Tags journals with top-level disciplines from ``data/ext_list*.csv`` (cols V–AZ)
+  3. Optionally overlays corpus RTI/paper counts from xlsx ``by_year`` if present
+
+Typical usage (CSV with discipline columns in data/):
+
+    python3 scripts/embed_benchmarks.py
+"""
 from __future__ import annotations
 
+import csv
 import json
 import re
 import sys
@@ -264,6 +278,86 @@ def normalize_journal_name(value) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip())
 
 
+def find_journal_list_csv() -> Path | None:
+    data_dir = ROOT / "data"
+    if not data_dir.is_dir():
+        return None
+    matches = sorted(
+        {
+            *data_dir.glob("ext_list*.csv"),
+            *data_dir.glob("*ext_list*.csv"),
+            *data_dir.glob("*May_2026*.csv"),
+        }
+    )
+    if not matches:
+        return None
+    for path in matches:
+        if "ext_list" in path.name.lower():
+            return path
+    return matches[0]
+
+
+def discipline_columns(headers: list[str]) -> list[tuple[int, str]]:
+    disc_start = DISCIPLINE_COL_START - 1
+    disc_end = DISCIPLINE_COL_END
+    cols: list[tuple[int, str]] = []
+    for idx in range(disc_start, min(disc_end, len(headers))):
+        label = str(headers[idx] or "").strip()
+        if label:
+            cols.append((idx, label))
+    return cols
+
+
+def extract_journal_disciplines(
+    headers: list[str],
+    rows: list[tuple],
+    known_journals: set[str],
+) -> dict[str, list[str]]:
+    name_col = detect_journal_name_column(headers, rows, known_journals)
+    if name_col is None:
+        return {}
+
+    discipline_headers = discipline_columns(headers)
+    if not discipline_headers:
+        return {}
+
+    known_lower = {name.lower(): name for name in known_journals}
+    out: dict[str, list[str]] = {}
+    matched = 0
+    for row in rows:
+        if name_col >= len(row):
+            continue
+        raw_name = normalize_journal_name(row[name_col])
+        if not raw_name:
+            continue
+        journal = raw_name if raw_name in known_journals else known_lower.get(raw_name.lower())
+        if not journal:
+            continue
+        disciplines = []
+        for idx, label in discipline_headers:
+            if idx < len(row) and is_truthy_cell(row[idx]):
+                disciplines.append(label)
+        if disciplines:
+            out[journal] = disciplines
+            matched += 1
+    return out
+
+
+def read_journal_disciplines_csv(path: Path, known_journals: set[str]) -> dict[str, list[str]]:
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        rows = [tuple(row) for row in csv.reader(handle)]
+    if len(rows) < 2:
+        return {}
+    headers = [str(c).strip() if c is not None else "" for c in rows[0]]
+    data_rows = rows[1:]
+    result = extract_journal_disciplines(headers, data_rows, known_journals)
+    print(
+        f"Disciplines from {path.name}: {len(result)} journals tagged, "
+        f"{len(discipline_columns(headers))} discipline columns (V–AZ)"
+    )
+    return result
+
+
 def detect_journal_name_column(headers: list[str], rows: list[tuple], known_journals: set[str]) -> int | None:
     known_lower = {name.lower(): name for name in known_journals}
     best_idx = None
@@ -328,46 +422,12 @@ def read_journal_disciplines(path: Path, known_journals: set[str]) -> dict[str, 
         print("WARNING: could not locate a journal sheet with discipline columns V–AZ", file=sys.stderr)
         return {}
 
-    disc_start = DISCIPLINE_COL_START - 1
-    disc_end = DISCIPLINE_COL_END
-    discipline_headers = []
-    for idx in range(disc_start, min(disc_end, len(best_headers))):
-        label = str(best_headers[idx] or "").strip()
-        if label:
-            discipline_headers.append((idx, label))
-
-    if not discipline_headers:
-        print(
-            f"WARNING: no discipline headers found in columns V–AZ on sheet '{best_sheet}'",
-            file=sys.stderr,
-        )
-        return {}
-
-    known_lower = {name.lower(): name for name in known_journals}
-    out: dict[str, list[str]] = {}
-    matched = 0
-    for row in best_rows[1:]:
-        if best_name_col >= len(row):
-            continue
-        raw_name = normalize_journal_name(row[best_name_col])
-        if not raw_name:
-            continue
-        journal = raw_name if raw_name in known_journals else known_lower.get(raw_name.lower())
-        if not journal:
-            continue
-        disciplines = []
-        for idx, label in discipline_headers:
-            if idx < len(row) and is_truthy_cell(row[idx]):
-                disciplines.append(label)
-        if disciplines:
-            out[journal] = disciplines
-            matched += 1
-
+    result = extract_journal_disciplines(best_headers, best_rows[1:], known_journals)
     print(
-        f"Disciplines from sheet '{best_sheet}' (columns V–AZ): "
-        f"{matched} journals tagged, {len(discipline_headers)} discipline columns"
+        f"Disciplines from xlsx sheet '{best_sheet}': {len(result)} journals tagged, "
+        f"{len(discipline_columns(best_headers))} discipline columns (V–AZ)"
     )
-    return out
+    return result
 
 
 def aggregate_year(journals: dict, journal_names: list[str], year: str) -> dict | None:
@@ -523,32 +583,37 @@ def compute_by_year_fallback(journals: dict) -> dict[str, dict]:
 
 def main() -> None:
     requested = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
-    xlsx_path = find_xlsx(requested)
     content = HTML.read_text(encoding="utf-8")
     data = extract_json_block(content, "DATA")
     journals = data["j"]
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
 
-    source = "2026_sciscore_v3.xlsx/by_year"
-    fallback = compute_by_year_fallback(journals)
+    # All journal metrics already live in embedded DATA — xlsx is not required.
+    by_year = compute_by_year_fallback(journals)
+    source = "embedded_DATA"
+    print("Using embedded DATA for all-journal benchmarks.")
+
+    xlsx_path = find_xlsx(requested)
     if xlsx_path:
-        by_year_xlsx = read_by_year_xlsx(xlsx_path)
-        by_year = merge_by_year(by_year_xlsx, fallback)
-        source = f"{xlsx_path.name}/by_year"
-        print(f"Loaded by_year benchmarks from {xlsx_path} ({len(by_year_xlsx)} xlsx years, merged with DATA fallback)")
-    else:
-        by_year = fallback
-        source = "computed_fallback_from_DATA"
-        print(
-            f"WARNING: no .xlsx found at {requested} or in data/\n"
-            "Place 2026_sciscore_v3.xlsx in data/ and re-run.\n"
-            "Using paper-weighted all-journal averages from embedded DATA as fallback.",
-            file=sys.stderr,
-        )
+        try:
+            by_year_xlsx = read_by_year_xlsx(xlsx_path)
+            by_year = merge_by_year(by_year_xlsx, by_year)
+            source = f"{xlsx_path.name}/by_year+embedded_DATA"
+            print(f"Merged optional by_year overlay from {xlsx_path.name}")
+        except Exception as exc:
+            print(f"Note: skipped xlsx by_year ({exc}); using embedded DATA only")
 
     journal_disciplines: dict[str, list[str]] = {}
-    if xlsx_path:
-        journal_disciplines = read_journal_disciplines(xlsx_path, set(journals.keys()))
+    csv_path = find_journal_list_csv()
+    if csv_path:
+        journal_disciplines = read_journal_disciplines_csv(csv_path, set(journals.keys()))
+    elif xlsx_path:
+        try:
+            journal_disciplines = read_journal_disciplines(xlsx_path, set(journals.keys()))
+        except Exception as exc:
+            print(f"Note: skipped xlsx disciplines ({exc})")
+
+    if journal_disciplines:
         tagged = apply_disciplines_to_data(journals, journal_disciplines)
         print(f"Applied discipline tags to {tagged} journals in embedded DATA")
 
