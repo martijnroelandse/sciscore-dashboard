@@ -430,12 +430,17 @@ def main() -> None:
         content,
         "pptxBenchmarkLine",
         r'''function pptxBenchmarkLine(yd, year) {
-  const compare = compareBenchmark(year);
-  const compareName = compareLabel();
-  if (compare?.r != null && yd?.r != null) {
-    return `${compareName} RTI ${compare.r.toFixed(1)} (${fmtDeltaRti(deltaRti(yd.r, compare.r))})`;
+  const allJ = byYearBenchmark(year);
+  const clients = clientOrgBenchmark(year);
+  const clientLabel = CLIENT_ORG_META.clientLabel || 'SciScore clients';
+  const parts = [];
+  if (allJ?.r != null && yd?.r != null) {
+    parts.push(`PMC average RTI ${allJ.r.toFixed(1)} (${fmtDeltaRti(deltaRti(yd.r, allJ.r))})`);
   }
-  return '';
+  if (clients?.r != null && yd?.r != null) {
+    parts.push(`${clientLabel} RTI ${clients.r.toFixed(1)} (${fmtDeltaRti(deltaRti(yd.r, clients.r))})`);
+  }
+  return parts.length ? parts.join('  ·  ') : '';
 }''',
     )
 
