@@ -15,6 +15,9 @@ SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
 PUBLISHER_OVERRIDES = {
     "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease": "American Heart Association",
+    "The Journal of Cell Biology": "Rockefeller University Press",
+    "The Journal of Experimental Medicine": "Rockefeller University Press",
+    "The FASEB Journal": "Federation of American Societies for Experimental Biology",
 }
 
 

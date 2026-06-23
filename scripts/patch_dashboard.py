@@ -111,7 +111,7 @@ function groupJournalCount(grp) {
 
 function populateGroups() {
   Object.keys(GROUPS)
-    .sort((a, b) => groupJournalCount(b) - groupJournalCount(a) || a.localeCompare(b))
+    .sort((a, b) => a.localeCompare(b))
     .forEach(grp => {
       const opt = document.createElement('option');
       opt.value = grp;
