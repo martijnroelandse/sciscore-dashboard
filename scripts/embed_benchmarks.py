@@ -100,21 +100,89 @@ def norm_header(value) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
 
-def map_headers(headers: list) -> dict[str, int]:
+def looks_like_year(value) -> bool:
+    if value is None or str(value).strip() == "":
+        return False
+    try:
+        year = int(float(value))
+    except (TypeError, ValueError):
+        return False
+    return 1990 <= year <= 2035
+
+
+def infer_year_column(headers: list, data_rows: list) -> int | None:
+    """by_year often uses a blank first-column header with years in the data rows."""
+    if headers and norm_header(headers[0]) == "":
+        hits = sum(1 for row in data_rows[:20] if row and looks_like_year(row[0]))
+        if hits >= 2:
+            return 0
+    max_cols = max((len(row) for row in data_rows[:20]), default=len(headers))
+    for idx in range(max_cols):
+        hits = sum(
+            1
+            for row in data_rows[:20]
+            if row and idx < len(row) and looks_like_year(row[idx])
+        )
+        if hits >= 2:
+            return idx
+    return None
+
+
+def map_headers(headers: list, data_rows: list | None = None) -> dict[str, int]:
     normalized = [norm_header(h) for h in headers]
     mapping: dict[str, int] = {}
     for key, aliases in BY_YEAR_ALIASES.items():
         for alias in aliases:
             alias_norm = norm_header(alias)
             for idx, header in enumerate(normalized):
-                if header == alias_norm or alias_norm in header:
+                if not header and key != "year":
+                    continue
+                if header == alias_norm or (header and alias_norm in header):
                     mapping[key] = idx
                     break
             if key in mapping:
                 break
+    if "year" not in mapping and data_rows:
+        inferred = infer_year_column(headers, data_rows)
+        if inferred is not None:
+            mapping["year"] = inferred
     if "year" not in mapping:
         raise ValueError(f"Could not find a year column in by_year headers: {headers}")
     return mapping
+
+
+def find_by_year_header_row(rows: list) -> tuple[int, list, dict[str, int]]:
+    """Locate the header row when by_year has leading blank rows or multiple tables."""
+    last_error: ValueError | None = None
+    for idx in range(min(15, len(rows))):
+        headers = [str(c) if c is not None else "" for c in rows[idx]]
+        data_rows = rows[idx + 1 : idx + 21]
+        if not data_rows:
+            continue
+        try:
+            colmap = map_headers(headers, data_rows)
+        except ValueError as exc:
+            last_error = exc
+            continue
+        if "r" in colmap or "n" in colmap:
+            return idx, headers, colmap
+    if last_error:
+        raise last_error
+    headers = [str(c) if c is not None else "" for c in rows[0]]
+    return 0, headers, map_headers(headers, rows[1:21])
+
+
+def merge_by_year(primary: dict[str, dict], fallback: dict[str, dict]) -> dict[str, dict]:
+    """Overlay sparse xlsx by_year rows onto computed corpus averages."""
+    years = sorted(set(primary) | set(fallback))
+    out: dict[str, dict] = {}
+    for year in years:
+        base = dict(fallback.get(year) or {})
+        overlay = primary.get(year) or {}
+        merged = {**base, **{k: v for k, v in overlay.items() if v is not None}}
+        if merged:
+            out[year] = merged
+    return out
 
 
 def parse_rate(value):
@@ -163,11 +231,10 @@ def read_by_year_xlsx(path: Path) -> dict[str, dict]:
     if not rows:
         raise ValueError("by_year sheet is empty")
 
-    headers = [str(c) if c is not None else "" for c in rows[0]]
-    colmap = map_headers(headers)
+    header_idx, headers, colmap = find_by_year_header_row(rows)
     print("by_year columns mapped:", {k: headers[v] for k, v in sorted(colmap.items(), key=lambda x: x[1])})
     out: dict[str, dict] = {}
-    for row in rows[1:]:
+    for row in rows[header_idx + 1 :]:
         if not row or all(cell is None or str(cell).strip() == "" for cell in row):
             continue
         year_raw = row[colmap["year"]]
@@ -463,12 +530,14 @@ def main() -> None:
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
 
     source = "2026_sciscore_v3.xlsx/by_year"
+    fallback = compute_by_year_fallback(journals)
     if xlsx_path:
-        by_year = read_by_year_xlsx(xlsx_path)
+        by_year_xlsx = read_by_year_xlsx(xlsx_path)
+        by_year = merge_by_year(by_year_xlsx, fallback)
         source = f"{xlsx_path.name}/by_year"
-        print(f"Loaded by_year benchmarks from {xlsx_path} ({len(by_year)} years)")
+        print(f"Loaded by_year benchmarks from {xlsx_path} ({len(by_year_xlsx)} xlsx years, merged with DATA fallback)")
     else:
-        by_year = compute_by_year_fallback(journals)
+        by_year = fallback
         source = "computed_fallback_from_DATA"
         print(
             f"WARNING: no .xlsx found at {requested} or in data/\n"
