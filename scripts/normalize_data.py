@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = Path(__file__).resolve().parent
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 HTML = ROOT / "SciScore_journal_dashboard.html"
 GROUP_MAP_PATH = ROOT / "scripts" / "group_map.json"
 CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
@@ -16,19 +20,7 @@ SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
 
 
-def extract_json_block(content: str, marker: str) -> dict:
-    pattern = rf"const {marker} = (\{{.*?\}});"
-    match = re.search(pattern, content, re.DOTALL)
-    if not match:
-        raise ValueError(f"Could not find const {marker} in HTML")
-    return json.loads(match.group(1))
-
-
-def replace_json_block(content: str, marker: str, data: dict) -> str:
-    serialized = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
-    pattern = rf"const {marker} = \{{.*?\}};"
-    replacement = f"const {marker} = {serialized};"
-    return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
+from html_json import extract_json_block, replace_const_block as replace_json_block
 
 
 def total_papers(journal: dict) -> int:

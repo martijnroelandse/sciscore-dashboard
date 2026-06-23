@@ -22,6 +22,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = Path(__file__).resolve().parent
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
 HTML = ROOT / "SciScore_journal_dashboard.html"
 CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 DEFAULT_XLSX = ROOT / "data" / "2026_sciscore_v3.xlsx"
@@ -80,34 +83,8 @@ def find_xlsx(path: Path) -> Path | None:
     return None
 
 
-def extract_json_block(content: str, marker: str) -> dict:
-    pattern = rf"const {marker} = (\{{.*?\}});"
-    match = re.search(pattern, content, re.DOTALL)
-    if not match:
-        raise ValueError(f"Could not find const {marker} in HTML")
-    return json.loads(match.group(1))
-
-
-def replace_const_block(content: str, marker: str, data) -> str:
-    serialized = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
-    pattern = rf"const {marker} = .*?;"
-    replacement = f"const {marker} = {serialized};"
-    if re.search(pattern, content, flags=re.DOTALL):
-        return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
-    raise ValueError(f"Could not find const {marker} in HTML")
-
-
-def insert_or_replace_const_block(content: str, marker: str, data, after_marker: str) -> str:
-    serialized = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
-    pattern = rf"const {marker} = .*?;"
-    replacement = f"const {marker} = {serialized};"
-    if re.search(pattern, content, flags=re.DOTALL):
-        return re.sub(pattern, replacement, content, count=1, flags=re.DOTALL)
-    anchor = rf"(const {after_marker} = .*?;\n)"
-    match = re.search(anchor, content, flags=re.DOTALL)
-    if not match:
-        raise ValueError(f"Could not find anchor const {after_marker} for inserting {marker}")
-    return content[: match.end()] + replacement + "\n" + content[match.end() :]
+from html_json import extract_json_block, insert_or_replace_const_block, replace_const_block
+from repair_dashboard_html import data_block_is_corrupt, repair_data_block, patch_init_hooks
 
 
 def norm_header(value) -> str:
@@ -584,6 +561,9 @@ def compute_by_year_fallback(journals: dict) -> dict[str, dict]:
 def main() -> None:
     requested = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     content = HTML.read_text(encoding="utf-8")
+    if data_block_is_corrupt(content):
+        print("Repairing corrupted const DATA block before embedding benchmarks…")
+        content = repair_data_block(content)
     data = extract_json_block(content, "DATA")
     journals = data["j"]
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
@@ -658,6 +638,7 @@ def main() -> None:
     content = insert_or_replace_const_block(
         content, "BENCHMARK_BY_KEY", benchmark_by_key, "BENCHMARK_CATALOG"
     )
+    content = patch_init_hooks(content)
     HTML.write_text(content, encoding="utf-8")
     print(
         f"Embedded {len(benchmark_catalog)} compare options "

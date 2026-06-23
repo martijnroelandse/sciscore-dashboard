@@ -261,7 +261,15 @@ RENDER_RESOURCE_GRID = r'''function renderResourceGrid(yd, year) {
     const benchLine = bench?.[r.key] != null
       ? `<div class="res-bench">${benchLabel} ${pct(bench[r.key])}${val != null ? ' ' + deltaBadgePp(val, bench[r.key], benchLabel) : ''}</div>`
       : '';
-'''
+    return `<div class="resource-item">
+      <div class="resource-row">
+        <div class="res-name">${r.name}${detected}</div>
+        <div class="bar-bg"><div class="bar-fill${p != null && p >= 60 ? ' strong' : ''}" style="width:${p ?? 0}%"></div></div>
+        <div class="res-pct">${p != null ? p + '%' : '—'}</div>
+      </div>${benchLine}
+    </div>`;
+  }).join('');
+}'''
 
 RADAR_DATASETS = r'''function radarDatasets(year, vals, label) {
   const compare = compareBenchmark(year);
