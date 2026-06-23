@@ -171,6 +171,12 @@ def merge_by_year(primary: dict[str, dict], fallback: dict[str, dict]) -> dict[s
         base = dict(fallback.get(year) or {})
         overlay = primary.get(year) or {}
         merged = {**base, **{k: v for k, v in overlay.items() if v is not None}}
+        if (
+            merged.get("r") is not None
+            and merged["r"] < 1
+            and (base.get("r") or 0) >= 1
+        ):
+            merged["r"] = base["r"]
         if merged:
             out[year] = merged
     return out
@@ -189,6 +195,17 @@ def parse_rate(value):
     return num
 
 
+def parse_rti(value):
+    """RTI is on a 0–10 scale; do not treat values like 4.2 as percentages."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    return float(value)
+
+
 def parse_int(value):
     if value is None or value == "":
         return None
@@ -203,6 +220,8 @@ def row_to_year_data(row: list, colmap: dict[str, int]) -> dict:
         raw = row[colmap[key]] if colmap[key] < len(row) else None
         if key in COUNT_KEYS or key == "n":
             out[key] = parse_int(raw)
+        elif key == "r":
+            out[key] = parse_rti(raw)
         else:
             out[key] = parse_rate(raw)
     return out
@@ -518,6 +537,11 @@ def build_benchmark_catalog(
 ) -> list[dict]:
     catalog: list[dict] = [
         {"id": "all", "label": "All journals", "group": "General"},
+        {
+            "id": "clients",
+            "label": client_cfg.get("label", "SciScore clients"),
+            "group": "General",
+        },
     ]
     seen: set[str] = set()
     for discipline in discipline_order:
@@ -540,13 +564,6 @@ def build_benchmark_catalog(
                 "group": "Disciplines",
             }
         )
-    catalog.append(
-        {
-            "id": "clients",
-            "label": client_cfg.get("label", "SciScore clients"),
-            "group": "Clients",
-        }
-    )
     return catalog
 
 
