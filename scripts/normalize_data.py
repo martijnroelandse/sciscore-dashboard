@@ -13,6 +13,12 @@ GROUP_MAP_PATH = ROOT / "scripts" / "group_map.json"
 
 SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
+PUBLISHER_OVERRIDES = {
+    "Journal of the American Heart Association: Cardiovascular and Cerebrovascular Disease": "American Heart Association",
+    "The Journal of Cell Biology": "Rockefeller University Press",
+    "The Journal of Experimental Medicine": "Rockefeller University Press",
+    "The FASEB Journal": "Federation of American Societies for Experimental Biology",
+}
 
 
 def extract_json_block(content: str, marker: str) -> dict:
@@ -105,6 +111,17 @@ def apply_sn_sub_brands(journals: dict) -> int:
     return changed
 
 
+def apply_publisher_overrides(journals: dict) -> int:
+    changed = 0
+    for journal, publisher in PUBLISHER_OVERRIDES.items():
+        if journal not in journals:
+            continue
+        if journals[journal].get("pub") != publisher:
+            journals[journal]["pub"] = publisher
+            changed += 1
+    return changed
+
+
 def rebuild_publishers(journals: dict) -> dict[str, list[str]]:
     publishers: dict[str, list[str]] = defaultdict(list)
     for journal, entry in journals.items():
@@ -146,6 +163,7 @@ def main() -> None:
 
     journals_before = len(data["j"])
     journals, renamed = dedupe_journals(data["j"])
+    override_updates = apply_publisher_overrides(journals)
     sn_split = apply_sn_sub_brands(journals)
     publishers = rebuild_publishers(journals)
     group_map = update_group_map(group_map, list(publishers.keys()))
@@ -170,6 +188,7 @@ def main() -> None:
 
     sn_pubs = [p for p in publishers if p in SN_SUB_BRANDS or p == "Springer Nature Korea"]
     print(f"Journals: {journals_before} -> {len(journals)} ({len(renamed)} merged)")
+    print(f"Publisher overrides applied: {override_updates}")
     print(f"Springer Nature sub-brand reassignment: {sn_split} journals")
     print(f"SN group publishers: {', '.join(f'{p} ({len(publishers[p])})' for p in sorted(sn_pubs))}")
     blood = [n for n in journals if n.lower() == "blood research"]

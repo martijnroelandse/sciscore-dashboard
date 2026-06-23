@@ -10,7 +10,7 @@
       "journals": []
     },
     "AHA": {
-      "publishers": [],
+      "publishers": ["American Heart Association"],
       "journals": [
         "American Heart Journal",
         "Arteriosclerosis, Thrombosis, and Vascular Biology",
@@ -28,7 +28,7 @@
       ]
     },
     "Rockefeller": {
-      "publishers": [],
+      "publishers": ["Rockefeller University Press"],
       "journals": [
         "The Journal of Cell Biology",
         "The Journal of Experimental Medicine",
@@ -36,7 +36,7 @@
       ]
     },
     "FASEB": {
-      "publishers": [],
+      "publishers": ["Federation of American Societies for Experimental Biology"],
       "journals": ["The FASEB Journal", "FASEB BioAdvances"]
     },
     "eLife": {
