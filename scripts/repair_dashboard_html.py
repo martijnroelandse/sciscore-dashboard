@@ -12,8 +12,8 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from html_json import (
+    _const_line_span,
     _data_blob,
-    _data_line_span,
     extract_json_block,
     has_merge_conflicts,
     recover_data_json,
@@ -27,8 +27,8 @@ HTML = ROOT / "SciScore_journal_dashboard.html"
 def data_block_is_corrupt(content: str) -> bool:
     if has_merge_conflicts(content):
         return True
-    pos, line_end = _data_line_span(content)
-    line = content[pos:line_end]
+    _, line_end = _const_line_span(content, "DATA")
+    line = content[content.index("const DATA = ") : line_end]
     if "\nconst GROUP_MAP" in line:
         return True
     try:
