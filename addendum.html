@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Methods &amp; Glossary — SciScore Journal Intelligence</title>
+<style>
+  :root {
+    --navy:       #0D1B3E;
+    --navy-mid:   #132348;
+    --navy-card:  #1A2E5A;
+    --blue:       #29ABE2;
+    --blue-light: #5CC8F0;
+    --blue-dim:   rgba(41,171,226,0.15);
+    --blue-border:rgba(41,171,226,0.25);
+    --white:      #FFFFFF;
+    --text:       #E8F0F8;
+    --muted:      #A8C8E0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #FFFFFF;
+    border-bottom: 2px solid var(--blue);
+    padding: 0 24px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(41,171,226,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 14px; }
+  .logo-text { font-size: 1.1rem; font-weight: 700; color: var(--navy); letter-spacing: 0.02em; }
+  .header-divider { width: 1px; height: 26px; background: #C0D8E8; }
+  .header-title { font-size: 0.9rem; color: #1A6FA0; font-weight: 500; letter-spacing: 0.04em; }
+  .header-nav { display: flex; align-items: center; gap: 12px; }
+  .header-link {
+    font-size: 0.82rem;
+    color: #1A6FA0;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--blue-border);
+    transition: background 0.15s;
+  }
+  .header-link:hover { background: var(--blue-dim); color: var(--navy); }
+  .header-link.active { background: var(--blue); color: var(--navy); border-color: var(--blue); }
+
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--blue);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--blue-border);
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--white);
+    margin: 20px 0 8px;
+  }
+  p { margin-bottom: 12px; font-size: 0.92rem; }
+  ul, ol { margin: 0 0 14px 1.4rem; font-size: 0.92rem; }
+  li { margin-bottom: 6px; }
+
+  .card {
+    background: var(--navy-card);
+    border: 1px solid var(--blue-border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 16px;
+  }
+  .card p:last-child { margin-bottom: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin: 12px 0 16px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--blue-border);
+  }
+  th {
+    color: var(--blue);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  td:first-child { font-weight: 600; color: var(--white); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+
+  a { color: var(--blue-light); }
+  a:hover { text-decoration: none; }
+
+  .refs { font-size: 0.85rem; }
+  .refs li { margin-bottom: 10px; }
+
+  .note {
+    background: var(--blue-dim);
+    border-left: 3px solid var(--blue);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin: 16px 0;
+  }
+
+  footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    border-top: 1px solid var(--blue-border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <span class="logo-text">SciScore</span>
+    <div class="header-divider"></div>
+    <div class="header-title">Methods &amp; Glossary</div>
+  </div>
+  <nav class="header-nav">
+    <a class="header-link" href="SciScore_journal_dashboard.html">← Dashboard</a>
+    <a class="header-link active" href="addendum.html">Methods</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Methods, calculations &amp; glossary</h1>
+  <p class="subtitle">How this dashboard was built, how scores are computed, and what the metrics mean.</p>
+
+  <section>
+    <h2>What we did</h2>
+    <p>
+      This dashboard presents journal-level rigor and transparency metrics derived from the same
+      large-scale analysis pipeline described in
+      <a href="https://www.jmir.org/2022/6/e37324" target="_blank" rel="noopener">Menke et&nbsp;al.&nbsp;(2022)</a>
+      (<em>J Med Internet Res</em>; DOI&nbsp;<a href="https://doi.org/10.2196/37324" target="_blank" rel="noopener">10.2196/37324</a>).
+      We applied the established methodology to assess all papers in the
+      <strong>PubMed Central (PMC) Open Access subset</strong> and scored each manuscript with
+      <strong>SciScore version&nbsp;3</strong> (dataset: <code>2026_sciscore_v3</code>).
+    </p>
+    <p>
+      SciScore is an automated natural-language processing tool that detects transparency criteria
+      aligned with reproducibility guidelines (NIH rigor standards, MDAR, ARRIVE, and related
+      checklists) and identifies key biological research resources (antibodies, cell lines,
+      organisms, software tools). It produces a numerical score for each paper and aggregates those
+      scores into the <strong>Rigor &amp; Transparency Index (RTI)</strong> at journal, publisher,
+      and benchmark levels.
+    </p>
+    <div class="card">
+      <p><strong>Corpus.</strong> Full-text articles from the PMC Open Archives Initiative (OAI)
+      open-access subset — the same machine-readable corpus used in the 2022 institutional RTI study.
+      Abstract-only articles, manuscripts without a detectable methods section, and articles
+      available only as non-parseable PDF supplements are excluded from scoring.</p>
+      <p><strong>Time range in this dashboard.</strong> 2015–2025 (embedded journal data). Corpus-wide
+      benchmark series extend further back where papers exist in the dataset.</p>
+      <p><strong>SciScore version.</strong> Version&nbsp;3 (released August&nbsp;2024) — see
+      <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">SciCrunch release notes</a>
+      for details on classifier and scoring refinements. The core framework (10-point scale,
+      conditional rigor logic, resource findability) follows Menke et&nbsp;al.; this dashboard
+      applies v3 across an expanded PMC corpus through 2025.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How individual papers are scored</h2>
+    <p>
+      Each manuscript receives a <strong>SciScore from 0 to 10</strong>. The score has two
+      components, each contributing up to 5 points:
+    </p>
+
+    <h3>1. Rigor adherence (up to 5 points)</h3>
+    <p>
+      SciScore detects whether a paper addresses reproducibility-related reporting criteria —
+      for example IRB/IACUC approval, randomization, blinding, power analysis, sex as a biological
+      variable, inclusion/exclusion criteria, and related items. The rigor score compares the number
+      of <em>found</em> criteria against the number <em>expected</em> given what the manuscript
+      contains, using <strong>conditional scoring logic</strong>: criteria are only expected when
+      contextually relevant (e.g. cell-line authentication is expected only when a cell line is
+      detected; ethics-related criteria trigger expectations for study-design reporting).
+    </p>
+
+    <h3>2. Resource findability (up to 5 points)</h3>
+    <p>
+      SciScore identifies key biological resources mentioned in the manuscript — antibodies,
+      organisms, cell lines, and software tools — and checks whether each is uniquely identifiable
+      (via a Research Resource Identifier, RRID, or an RRID suggestion). The resource score
+      compares uniquely identifiable resources to the total resources detected.
+    </p>
+
+    <h3>Not applicable (score = 0)</h3>
+    <p>
+      Papers that contain no scorable criteria or resources (e.g. editorials, highly theoretical
+      work, or manuscripts with no methods section) receive a SciScore of&nbsp;0 and are marked
+      <em>not applicable</em>. These papers are <strong>excluded from RTI aggregation</strong> —
+      only papers with SciScore&nbsp;&gt;&nbsp;0 contribute to journal and portfolio averages.
+    </p>
+
+    <h3>Detected but not aggregated in this dashboard</h3>
+    <p>
+      SciScore also detects <strong>data availability</strong>, <strong>code availability</strong>,
+      and <strong>protocol, code, and data identifiers</strong> at the individual-paper level.
+      These criteria are reported in the SciScore author report but are
+      <strong>not included in the journal-level aggregates</strong> shown here — they do not appear
+      as columns in the <code>2026_sciscore_v3</code> dataset embedded in this dashboard.
+      The exported metrics are limited to RTI, study-design rates, and resource-findability rates
+      (see glossary below).
+    </p>
+
+    <div class="note">
+      Higher RTI values indicate more methodological detail and better resource identification.
+      They are associated with greater replicability potential but do not guarantee that a study
+      can be replicated without additional information. In the Reproducibility Project: Cancer
+      Biology, replication studies scored significantly higher (mean RTI&nbsp;7.6) than the
+      original papers they attempted to reproduce (mean RTI&nbsp;3.4).
+    </div>
+  </section>
+
+  <section>
+    <h2>How dashboard metrics are calculated</h2>
+
+    <h3>Journal RTI</h3>
+    <p>
+      For a given journal and publication year, <strong>RTI is the arithmetic mean SciScore</strong>
+      across all scored papers (SciScore&nbsp;&gt;&nbsp;0) published in that journal that year.
+      The paper count (<em>n</em>) shown in the dashboard is the number of scored papers included.
+    </p>
+
+    <h3>Publisher / group portfolio RTI</h3>
+    <p>
+      When viewing a publisher or publisher-group overview, metrics are <strong>paper-weighted
+      aggregates</strong> across all journals in scope. For each rate metric (RTI, sex reporting,
+      randomization, etc.), the portfolio value is:
+    </p>
+    <p style="text-align:center; font-family: Georgia, serif; font-size: 1rem; color: var(--blue-light); margin: 16px 0;">
+      Σ (journal rate × journal paper count) / Σ (journal paper counts)
+    </p>
+    <p>
+      This ensures journals with more papers contribute proportionally more to the portfolio
+      average, rather than treating each journal equally regardless of volume.
+    </p>
+
+    <h3>Sub-metric rates (study design &amp; resources)</h3>
+    <p>
+      Beyond RTI, the dashboard shows the <strong>proportion of papers addressing each criterion</strong>
+      within a journal or portfolio — for example, the percentage of papers reporting randomization,
+      blinding, or power analysis, and the percentage of detected antibodies, organisms, cell lines,
+      or tools that carry an RRID. These are stored as rates between 0 and 1 and displayed as
+      percentages in the UI.
+    </p>
+
+    <h3>Benchmark comparisons</h3>
+    <p>
+      The <em>Compare against</em> selector lets you benchmark a journal or portfolio against:
+    </p>
+    <ul>
+      <li><strong>All journals</strong> — corpus-wide averages from the <code>by_year</code> sheet
+          in the SciScore v3 dataset.</li>
+      <li><strong>Discipline groups</strong> — averages across journals tagged with a given
+          discipline category (from the extended journal list).</li>
+      <li><strong>SciScore client publishers</strong> — aggregated metrics for journals published
+          by SciScore client organizations (AACR, APS, AHA, Rockefeller, FASEB, eLife, etc.).</li>
+    </ul>
+    <p>
+      Delta badges show the difference between the selected subject and the chosen benchmark for
+      each metric.
+    </p>
+
+    <h3>Europe PMC RRID sampling (journal view)</h3>
+    <p>
+      The live RRID panel samples up to 24 open-access PMC articles per journal per year via the
+      Europe PMC API, fetches RRID annotations, and compares observed RRID usage against SciScore
+      benchmarks. This is a spot-check validation layer independent of the bulk SciScore scoring
+      pipeline.
+    </p>
+  </section>
+
+  <section>
+    <h2>Glossary</h2>
+    <table>
+      <thead>
+        <tr><th>Term</th><th>Definition</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RTI</td>
+          <td><strong>Rigor &amp; Transparency Index</strong> — the mean SciScore over a set of
+          papers. Used to compare journals, publishers, institutions, or countries on reporting
+          quality.</td>
+        </tr>
+        <tr>
+          <td>SciScore</td>
+          <td>Per-paper score (0–10) from automated NLP analysis of a manuscript's methods and
+          materials. Combines rigor adherence (0–5) and resource findability (0–5).</td>
+        </tr>
+        <tr>
+          <td>PMC</td>
+          <td><strong>PubMed Central</strong> — NIH's free full-text archive of biomedical and
+          life-sciences literature. The <em>open-access subset</em> (PMC-OAI) is the machine-readable
+          corpus used for bulk scoring.</td>
+        </tr>
+        <tr>
+          <td>RRID</td>
+          <td><strong>Research Resource Identifier</strong> — a persistent ID for antibodies,
+          cell lines, organisms, software tools, and other research resources, enabling unambiguous
+          identification across publications.</td>
+        </tr>
+        <tr>
+          <td>MDAR</td>
+          <td><strong>Materials Design, Analysis, and Reporting</strong> — a publisher-driven
+          multidisciplinary reporting framework whose checklist criteria inform SciScore's rigor
+          checks.</td>
+        </tr>
+        <tr>
+          <td>ARRIVE</td>
+          <td><strong>Animal Research: Reporting of In Vivo Experiments</strong> — guidelines for
+          reporting animal research; criteria incorporated into SciScore.</td>
+        </tr>
+        <tr>
+          <td>NIH rigor</td>
+          <td>U.S. National Institutes of Health guidelines on rigor and reproducibility in grant
+          applications, covering study design, biological variables, authentication, and more.</td>
+        </tr>
+        <tr>
+          <td>IRB</td>
+          <td><strong>Institutional Review Board</strong> — ethics approval for human subjects
+          research. Dashboard rate = proportion of papers with a detected IRB/ethics statement.</td>
+        </tr>
+        <tr>
+          <td>IACUC</td>
+          <td><strong>Institutional Animal Care and Use Committee</strong> — ethics approval for
+          animal research. Dashboard rate = proportion of papers with a detected IACUC statement.</td>
+        </tr>
+        <tr>
+          <td>Sex (sex)</td>
+          <td>Proportion of papers reporting sex as a biological variable or sex of study subjects.</td>
+        </tr>
+        <tr>
+          <td>Power (pwr)</td>
+          <td>Proportion of papers reporting a power analysis or sample-size justification.</td>
+        </tr>
+        <tr>
+          <td>Randomization (rand)</td>
+          <td>Proportion of papers reporting random assignment of subjects or samples to groups.</td>
+        </tr>
+        <tr>
+          <td>Blinding (blind)</td>
+          <td>Proportion of papers reporting blinding of investigators, assessors, or analysts.</td>
+        </tr>
+        <tr>
+          <td>Antibodies w/ RRID (ab)</td>
+          <td>Among detected antibodies, the proportion with an RRID or RRID suggestion.</td>
+        </tr>
+        <tr>
+          <td>Organisms w/ RRID (org)</td>
+          <td>Among detected organisms/model systems, the proportion with an RRID.</td>
+        </tr>
+        <tr>
+          <td>Cell lines w/ RRID (cl)</td>
+          <td>Among detected cell lines, the proportion with an RRID.</td>
+        </tr>
+        <tr>
+          <td>Software tools (tool)</td>
+          <td>Among detected software tools, the proportion with an RRID.</td>
+        </tr>
+        <tr>
+          <td>Paper-weighted</td>
+          <td>Aggregation method where each journal's metric is weighted by its paper count, so
+          high-volume journals influence portfolio averages more than low-volume ones.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Limitations</h2>
+    <ul>
+      <li><strong>Open-access subset bias.</strong> The PMC open-access corpus represents only a
+      fraction of all biomedical literature. Journals with restrictive access policies are
+      underrepresented.</li>
+      <li><strong>Supplementary PDFs.</strong> Methods or resource details provided only in
+      supplementary PDF files are not machine-readable and may be missed by automated scoring.</li>
+      <li><strong>Field differences.</strong> RTI is most applicable to experimental biomedical
+      research. Theoretical, computational, or non-life-science papers may score low or be marked
+      not applicable despite being rigorous in their own context.</li>
+      <li><strong>Automated detection.</strong> NLP classifiers can produce false positives and
+      false negatives. Entity-level agreement rates are generally &gt;80% (many &gt;90%) based on
+      manual curation in the 2022 validation study, but edge cases remain.</li>
+      <li><strong>Not a replicability guarantee.</strong> RTI measures reporting transparency, not
+      experimental correctness. A high score means a paper contains more methodological detail — a
+      necessary but not sufficient condition for replication.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>References</h2>
+    <ol class="refs">
+      <li>
+        Menke J, Eckmann P, Ozyurt IB, Roelandse M, Anderson N, Grethe J, Gamst A, Bandrowski A.
+        Establishing Institutional Scores With the Rigor and Transparency Index: Large-scale Analysis
+        of Scientific Reporting Quality. <em>J Med Internet Res</em>. 2022;24(6):e37324.
+        <a href="https://doi.org/10.2196/37324" target="_blank" rel="noopener">doi:10.2196/37324</a>
+      </li>
+      <li>
+        JMIR Publications. Rigor and Transparency Index: Large Scale Analysis of Scientific
+        Reporting Quality [announcement].
+        <a href="https://www.jmir.org/announcements/339" target="_blank" rel="noopener">jmir.org/announcements/339</a>
+      </li>
+      <li>
+        Menke J, Bandrowski A. Rigor and Transparency Index (RTI) — version 1.0 methodology.
+        <em>J Med Internet Res</em>. 2021;23(11):e31282.
+        <a href="https://doi.org/10.2196/31282" target="_blank" rel="noopener">doi:10.2196/31282</a>
+      </li>
+      <li>
+        SciCrunch Inc. SciScore Version 3 beta released.
+        <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">scicrunch.com/version-3-released</a>
+        (August 2024).
+      </li>
+    </ol>
+  </section>
+</main>
+
+<footer>
+  Powered by <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore</a>
+  · <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">SciScore v3 release notes</a>
+  · <a href="SciScore_journal_dashboard.html">Journal Intelligence Dashboard</a>
+</footer>
+
+</body>
+</html>
