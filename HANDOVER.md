@@ -83,9 +83,17 @@ open SciScore_journal_dashboard.html
 python3 -m http.server 8080
 ```
 
-## Regenerating after CSV update
+## Regenerating after data update
 
-1. Replace embedded `DATA` in the HTML (from `2026_sciscore_v3` enriched CSV).
+Place `data/by_journal_by_year.csv` (export of the xlsx `by_journal_by_year` tab) or the full `2026_sciscore_v3.xlsx` in `data/`. The CSV is tracked in git; other source files stay local.
+
+1. Embed journal metrics from CSV:
+
+```bash
+python3 scripts/embed_journal_data.py
+python3 scripts/inspect_xlsx.py   # optional: audit columns and year range
+```
+
 2. Run `python3 scripts/normalize_data.py` to deduplicate journal names and split Springer Nature into BMC / Nature Portfolio / Springer Nature sub-publishers.
 3. Place `2026_sciscore_v3.xlsx` in `data/` (must include a `by_year` sheet with all-journal averages). The file is gitignored — keep it local only.
 4. Install `openpyxl` if needed, then embed benchmarks:
