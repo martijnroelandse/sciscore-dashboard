@@ -197,63 +197,9 @@
       benchmark series extend further back where papers exist in the dataset.</p>
       <p><strong>SciScore version.</strong> Version&nbsp;3 (released August&nbsp;2024) — see
       <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">SciCrunch release notes</a>
-      for full details. The core scoring framework (10-point scale, conditional rigor logic,
-      resource findability) follows the methodology in Menke et&nbsp;al.; this dashboard applies
-      v3 across an expanded PMC corpus through 2025.</p>
-    </div>
-  </section>
-
-  <section>
-    <h2>What's new in SciScore version 3</h2>
-    <p>
-      Version&nbsp;3 builds on RTI&nbsp;2.0 with classifier improvements, refined scoring rules,
-      and a new statistics module. The following changes affect how individual papers are scored
-      in the bulk PMC analysis underlying this dashboard:
-    </p>
-
-    <h3>New statistics module</h3>
-    <p>
-      SciScore v3 adds AI-assisted detection of statistical methods. For each test identified
-      (e.g. <em>t</em>-test, ANOVA, chi-squared), the engine checks whether expected reporting
-      elements are present and flags the assumptions that should be satisfied. In the author-facing
-      report, statistics are presented in a dedicated table (Table&nbsp;3); rigor and resource
-      items occupy Tables&nbsp;1 and&nbsp;2.
-    </p>
-
-    <h3>Scoring constraint rules</h3>
-    <p>
-      Additional constraint rules were introduced to improve the relevance of expected criteria —
-      extending the conditional scoring logic described in the 2022 paper so that criteria are
-      only counted when contextually appropriate to the study type (human, animal, or other).
-    </p>
-
-    <h3>Classifier improvements</h3>
-    <ul>
-      <li>Enhanced recognition of <strong>data availability</strong> statements (updated using
-          work by the ODDPub team; Ridel et&nbsp;al. 2020,
-          <a href="https://doi.org/10.5334/dsj-2020-042" target="_blank" rel="noopener">doi:10.5334/dsj-2020-042</a>).</li>
-      <li>Improved detection of <strong>antibodies</strong> (including catalog numbers and large
-          lists), <strong>organisms</strong>, <strong>cell lines</strong>, <strong>software
-          tools</strong>, and <strong>statistical tests</strong>.</li>
-      <li>Better recognition of <strong>control reagent</strong> patterns for organisms,
-          antibodies, and cell lines, with automatic RRID lookup where possible.</li>
-      <li>Enhanced recognition of <strong>code repositories</strong> and software-tool URLs from
-          the RRID portal.</li>
-    </ul>
-
-    <h3>Report structure changes</h3>
-    <ul>
-      <li>Oligonucleotide probes and incorrect RRIDs moved from Table&nbsp;3 to Table&nbsp;2
-          (resource reporting).</li>
-      <li>Table&nbsp;3 is now devoted entirely to <strong>statistics</strong> reporting.</li>
-      <li>Study-type cover pages (human studies, animal studies, other, and score&nbsp;0) provide
-          context-specific summaries in the author/reviewer report interface.</li>
-    </ul>
-
-    <div class="note">
-      The dashboard aggregates journal-level RTI and the study-design and resource-findability
-      rates shown in the UI. Per-paper statistics checks from the v3 module contribute to the
-      overall SciScore but are not yet broken out as a separate dashboard metric.
+      for details on classifier and scoring refinements. The core framework (10-point scale,
+      conditional rigor logic, resource findability) follows Menke et&nbsp;al.; this dashboard
+      applies v3 across an expanded PMC corpus through 2025.</p>
     </div>
   </section>
 
@@ -289,6 +235,17 @@
       work, or manuscripts with no methods section) receive a SciScore of&nbsp;0 and are marked
       <em>not applicable</em>. These papers are <strong>excluded from RTI aggregation</strong> —
       only papers with SciScore&nbsp;&gt;&nbsp;0 contribute to journal and portfolio averages.
+    </p>
+
+    <h3>Detected but not aggregated in this dashboard</h3>
+    <p>
+      SciScore also detects <strong>data availability</strong>, <strong>code availability</strong>,
+      and <strong>protocol, code, and data identifiers</strong> at the individual-paper level.
+      These criteria are reported in the SciScore author report but are
+      <strong>not included in the journal-level aggregates</strong> shown here — they do not appear
+      as columns in the <code>2026_sciscore_v3</code> dataset embedded in this dashboard.
+      The exported metrics are limited to RTI, study-design rates, and resource-findability rates
+      (see glossary below).
     </p>
 
     <div class="note">
@@ -448,13 +405,6 @@
           <td>Among detected software tools, the proportion with an RRID.</td>
         </tr>
         <tr>
-          <td>Statistics module</td>
-          <td>SciScore v3 feature that detects statistical tests used in a paper and checks
-          whether expected reporting elements and test assumptions are addressed. Contributes to
-          the overall SciScore; detailed per-test output appears in the SciScore report
-          (Table&nbsp;3), not as a separate dashboard rate.</td>
-        </tr>
-        <tr>
           <td>Paper-weighted</td>
           <td>Aggregation method where each journal's metric is weighted by its paper count, so
           high-volume journals influence portfolio averages more than low-volume ones.</td>
@@ -503,16 +453,9 @@
         <a href="https://doi.org/10.2196/31282" target="_blank" rel="noopener">doi:10.2196/31282</a>
       </li>
       <li>
-        SciCrunch Inc. SciScore Version 3 beta released with new statistics module and
-        author/reviewer dashboard.
+        SciCrunch Inc. SciScore Version 3 beta released.
         <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">scicrunch.com/version-3-released</a>
         (August 2024).
-      </li>
-      <li>
-        Ridel L, Strech D, Franke T, et al. Tools and strategies to ensure rigor and
-        reproducibility of research results with a focus on transparency: ODDPub. <em>Data
-        Science Journal</em>. 2020;19:42.
-        <a href="https://doi.org/10.5334/dsj-2020-042" target="_blank" rel="noopener">doi:10.5334/dsj-2020-042</a>
       </li>
     </ol>
   </section>
