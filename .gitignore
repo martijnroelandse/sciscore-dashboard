@@ -7,3 +7,7 @@ node_modules/
 data/*.xlsx
 data/*.xls
 data/*.csv
+!data/2026_sciscore_v3.csv
+!data/2026_sciscore_v3*.csv
+!data/*by_year*.csv
+!data/ext_list*.csv

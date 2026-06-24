@@ -33,8 +33,8 @@ DEFAULT_XLSX = ROOT / "data" / "2026_sciscore_v3.xlsx"
 DISCIPLINE_COL_START = 22  # V (1-based)
 DISCIPLINE_COL_END = 52    # AZ inclusive (1-based)
 
-RATE_KEYS = ["r", "sex", "pwr", "rand", "blind", "irb", "iacuc", "ab", "org", "cl", "tool"]
-COUNT_KEYS = ["abn", "orgn", "cln", "tooln"]
+RATE_KEYS = ["r", "sex", "pwr", "rand", "blind", "irb", "iacuc", "ab", "org", "cl", "tool", "data", "code", "prot", "data_id", "code_id"]
+COUNT_KEYS = ["abn", "orgn", "cln", "tooln", "datan", "coden", "protn"]
 
 BY_YEAR_ALIASES: dict[str, list[str]] = {
     "year": ["year", "pub_year", "publication year"],
