@@ -85,7 +85,7 @@ python3 -m http.server 8080
 
 ## Regenerating after data update
 
-Place `data/by_journal_by_year.csv` (export of the xlsx `by_journal_by_year` tab) or the full `2026_sciscore_v3.xlsx` in `data/`. The CSV is tracked in git; other source files stay local.
+Place `data/2026_sciscore_v3.csv` (export of the xlsx `by_journal_by_year` tab) or the full `2026_sciscore_v3.xlsx` in `data/`. Tracked in git: `2026_sciscore_v3.csv`, `2026_sciscore_v3 - by_year.csv`, and `ext_list_May_2026.csv`. The xlsx stays local (gitignored).
 
 1. Embed journal metrics from CSV:
 
@@ -95,16 +95,21 @@ python3 scripts/inspect_xlsx.py   # optional: audit columns and year range
 ```
 
 2. Run `python3 scripts/normalize_data.py` to deduplicate journal names and split Springer Nature into BMC / Nature Portfolio / Springer Nature sub-publishers.
-3. Place `2026_sciscore_v3.xlsx` in `data/` (must include a `by_year` sheet with all-journal averages). The file is gitignored — keep it local only.
-4. Install `openpyxl` if needed, then embed benchmarks:
+
+3. Place `2026_sciscore_v3.xlsx` in `data/` (must include a `by_year` sheet with all-journal averages). Install `openpyxl` if needed, then embed benchmarks:
 
 ```bash
 pip install openpyxl
 python3 scripts/embed_benchmarks.py
 ```
 
-The script auto-detects any single `.xlsx` in `data/` if the default filename is missing.
-5. Run `python3 scripts/patch_dashboard.py` to re-apply GROUP_MAP and UI code.
+4. Apply UI patches for dynamic year range and open-science metrics:
+
+```bash
+python3 scripts/patch_extended_metrics_ui.py
+```
+
+The embed script verifies that `const GROUP_MAP` is still present after writing — if embed truncates the HTML, restore from git and re-run.
 
 ### Data normalization (`normalize_data.py`)
 
@@ -131,5 +136,9 @@ scripts/brand_config.json         # generated brand manifest
 scripts/normalize_data.py         # dedupe journals + SN sub-brands
 scripts/group_map.json            # publisher → group mappings
 scripts/patch_dashboard.py        # GROUP_MAP + UI patcher
+scripts/patch_extended_metrics_ui.py  # dynamic years + open-science UI
+scripts/embed_journal_data.py     # CSV → const DATA
+scripts/journal_data_io.py        # read/parse 2026_sciscore_v3 export
+scripts/inspect_xlsx.py           # audit source columns and year range
 HANDOVER.md                       # this file
 ```

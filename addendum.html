@@ -193,8 +193,10 @@
       open-access subset — the same machine-readable corpus used in the 2022 institutional RTI study.
       Abstract-only articles, manuscripts without a detectable methods section, and articles
       available only as non-parseable PDF supplements are excluded from scoring.</p>
-      <p><strong>Time range in this dashboard.</strong> 2015–2025 (embedded journal data). Corpus-wide
-      benchmark series extend further back where papers exist in the dataset.</p>
+      <p><strong>Time range in this dashboard.</strong> Journal-level data spans
+      <strong>1960–2025</strong> where papers exist in the embedded corpus (not every calendar year
+      has coverage). Corpus-wide benchmark series may extend slightly earlier. Year tabs show only
+      years with data for the selected journal or publisher scope.</p>
       <p><strong>SciScore version.</strong> Version&nbsp;3 (released August&nbsp;2024) — see
       <a href="https://www.scicrunch.com/version-3-released" target="_blank" rel="noopener">SciCrunch release notes</a>
       for details on classifier and scoring refinements. The core framework (10-point scale,
@@ -237,15 +239,15 @@
       only papers with SciScore&nbsp;&gt;&nbsp;0 contribute to journal and portfolio averages.
     </p>
 
-    <h3>Detected but not aggregated in this dashboard</h3>
+    <h3>Open science & identifiers (journal aggregates)</h3>
     <p>
-      SciScore also detects <strong>data availability</strong>, <strong>code availability</strong>,
-      and <strong>protocol, code, and data identifiers</strong> at the individual-paper level.
-      These criteria are reported in the SciScore author report but are
-      <strong>not included in the journal-level aggregates</strong> shown here — they do not appear
-      as columns in the <code>2026_sciscore_v3</code> dataset embedded in this dashboard.
-      The exported metrics are limited to RTI, study-design rates, and resource-findability rates
-      (see glossary below).
+      SciScore detects <strong>data availability</strong>, <strong>code availability</strong>,
+      <strong>protocol identifiers</strong>, and <strong>data/code identifiers</strong> at the
+      individual-paper level. This dashboard now includes journal-year aggregates for these
+      criteria (rates and, where applicable, detection counts) alongside RTI, study-design rates,
+      and resource-findability rates. Rates are the share of scored papers in that journal-year
+      where the criterion was detected; they are shown in the Open Science &amp; Identifiers panel
+      and benchmark tables.
     </p>
 
     <div class="note">
@@ -403,6 +405,26 @@
         <tr>
           <td>Software tools (tool)</td>
           <td>Among detected software tools, the proportion with an RRID.</td>
+        </tr>
+        <tr>
+          <td>Data availability (data)</td>
+          <td>Proportion of papers with a detected data-availability statement or repository link.</td>
+        </tr>
+        <tr>
+          <td>Code availability (code)</td>
+          <td>Proportion of papers with a detected code-availability statement or repository link.</td>
+        </tr>
+        <tr>
+          <td>Protocol identifiers (prot)</td>
+          <td>Proportion of papers with a detected protocol identifier (e.g. protocols.io).</td>
+        </tr>
+        <tr>
+          <td>Data identifiers (data_id)</td>
+          <td>Proportion of papers with a detected persistent data identifier (e.g. DOI to a dataset).</td>
+        </tr>
+        <tr>
+          <td>Code identifiers (code_id)</td>
+          <td>Proportion of papers with a detected persistent code identifier (e.g. DOI or archive ID).</td>
         </tr>
         <tr>
           <td>Paper-weighted</td>

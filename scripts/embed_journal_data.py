@@ -44,6 +44,11 @@ def main() -> int:
 
     content = HTML.read_text(encoding="utf-8")
     content = replace_const_block(content, "DATA", data)
+    if "\nconst GROUP_MAP" not in content:
+        raise SystemExit(
+            "ERROR: HTML looks truncated after DATA embed (const GROUP_MAP missing). "
+            "Restore SciScore_journal_dashboard.html from git and re-run."
+        )
     HTML.write_text(content, encoding="utf-8")
 
     after_years = sorted(
