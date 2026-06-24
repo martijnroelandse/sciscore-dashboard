@@ -7,3 +7,4 @@ node_modules/
 data/*.xlsx
 data/*.xls
 data/*.csv
+!data/by_journal_by_year.csv
