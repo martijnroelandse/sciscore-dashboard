@@ -130,16 +130,25 @@ def _rate(num: float | None, den: float | None) -> float | None:
     return num / den
 
 
-def _criterion_rate(row: list, idx: dict[str, int], prefix: str) -> float | None:
+def _criterion_rate(row: list, idx: dict[str, int], prefix: str, n: int | None) -> float | None:
     detected = _num(row[idx[f"{prefix} detected"]])
     not_expected = _num(row[idx[f"{prefix} not detected expected"]])
-    if detected is None and not_expected is None:
+    not_detected_not_expected = _num(row[idx[f"{prefix} not detected not expected"]])
+
+    # In the v3 export, "* not detected expected" is often always zero.
+    # Use pmid count as the denominator when available to avoid false 100% rates.
+    if n is not None and n > 0:
+        if detected is None and not_expected is None and not_detected_not_expected is None:
+            return None
+        return (detected or 0.0) / float(n)
+
+    if detected is None and not_expected is None and not_detected_not_expected is None:
         return None
     detected = detected or 0.0
-    not_expected = not_expected or 0.0
-    if detected + not_expected == 0:
+    denom = detected + (not_expected or 0.0) + (not_detected_not_expected or 0.0)
+    if denom <= 0:
         return None
-    return detected / (detected + not_expected)
+    return detected / denom
 
 
 def _header_index(headers: list[str]) -> dict[str, int]:
@@ -173,7 +182,7 @@ def row_to_metrics(row: list, idx: dict[str, int]) -> dict | None:
             metrics[key] = val
 
     for key, prefix in (("blind", "blinding"), ("irb", "irb"), ("iacuc", "iacuc")):
-        val = _criterion_rate(row, idx, prefix)
+        val = _criterion_rate(row, idx, prefix, n)
         if val is not None:
             metrics[key] = val
 
