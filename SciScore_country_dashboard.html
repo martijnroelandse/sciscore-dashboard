@@ -106,6 +106,14 @@
   <div class="sidebar">
     <div class="sidebar-section"><div class="sidebar-label">Search country</div>
       <input type="text" id="entitySearch" placeholder="Type country name…"></div>
+    
+    <div class="sidebar-section"><div class="sidebar-label">Sort by</div>
+      <select id="entitySort">
+        <option value="papers-desc">Papers (most)</option>
+        <option value="rti-desc">RTI (highest)</option>
+        <option value="rti-asc">RTI (lowest)</option>
+        <option value="name-asc">Name (A–Z)</option>
+      </select></div>
     <div class="sidebar-section"><span id="entityCountLabel" style="font-size:0.75rem;color:var(--muted)"></span></div>
     <div class="entity-list" id="entityList"></div></div>
   <div class="main" id="main"></div>
@@ -239,6 +247,40 @@ function togglePanel(id) {
   document.getElementById(id)?.classList.toggle('collapsed');
 }
 
+const SORT_LABELS = {
+  'papers-desc': 'papers (most)',
+  'rti-desc': 'RTI (highest)',
+  'rti-asc': 'RTI (lowest)',
+  'name-asc': 'name (A–Z)',
+};
+
+function getSortMode() {
+  return document.getElementById('entitySort')?.value || 'papers-desc';
+}
+
+function sortModeLabel(mode) {
+  return SORT_LABELS[mode] || mode;
+}
+
+function sortEntityKeys(keys, mode, dataMap, year, getName) {
+  const nameFn = getName || (k => k);
+  return [...keys].sort((a, b) => {
+    const ya = dataMap[a]?.y?.[year];
+    const yb = dataMap[b]?.y?.[year];
+    if (mode === 'rti-desc') {
+      const ra = ya?.r ?? -Infinity, rb = yb?.r ?? -Infinity;
+      return rb - ra || nameFn(a).localeCompare(nameFn(b));
+    }
+    if (mode === 'rti-asc') {
+      const ra = ya?.r ?? Infinity, rb = yb?.r ?? Infinity;
+      return ra - rb || nameFn(a).localeCompare(nameFn(b));
+    }
+    if (mode === 'name-asc') return nameFn(a).localeCompare(nameFn(b));
+    const na = ya?.n || 0, nb = yb?.n || 0;
+    return nb - na || nameFn(a).localeCompare(nameFn(b));
+  });
+}
+
 function renderDetailPanels(prefix) {
   return `
     <div id="heroRti"></div>
@@ -305,11 +347,7 @@ function updateYearPanels(yd, year, trendYears, trendValues, radarLabel) {
 let selectedCountry = null;
 const ENTITY_MAP = DATA.c;
 const LATEST_YEAR = String(Math.max(...Object.keys(BY_YEAR_BENCHMARK).map(y => +y)));
-const ALL_KEYS = Object.keys(ENTITY_MAP).sort((a, b) => {
-  const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
-  const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
-  return nb - na || a.localeCompare(b);
-});
+const ALL_KEYS = Object.keys(ENTITY_MAP);
 const YEARS = [...new Set(ALL_KEYS.flatMap(k => Object.keys(ENTITY_MAP[k].y || {})))].sort((a,b) => +a - +b);
 
 function latestYearFor(key) {
@@ -321,9 +359,10 @@ function renderEntityList() {
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   const list = document.getElementById('entityList');
   list.innerHTML = '';
-  const filtered = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  const matched = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  const filtered = sortEntityKeys(matched, getSortMode(), ENTITY_MAP, LATEST_YEAR);
   document.getElementById('entityCountLabel').textContent =
-    `${filtered.length.toLocaleString()} countries · sorted by ${LATEST_YEAR} papers`;
+    `${filtered.length.toLocaleString()} countries · sorted by ${sortModeLabel(getSortMode())}`;
   filtered.forEach(k => {
     const ly = latestYearFor(k);
     const yd = ENTITY_MAP[k]?.y?.[ly];
@@ -384,6 +423,7 @@ function renderYearContent() {
 
 function initCountryDashboard() {
   document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  document.getElementById('entitySort').addEventListener('change', renderEntityList);
   renderEntityList();
   const defaultCountry = ALL_KEYS.includes('United States') ? 'United States' : ALL_KEYS[0];
   if (defaultCountry) selectCountry(defaultCountry);
