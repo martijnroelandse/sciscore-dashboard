@@ -126,10 +126,50 @@ To adjust groupings, edit `scripts/group_map.json` and re-run `normalize_data.py
 3. Add `publisher_grouped` column from Sheet as source of truth for GROUP_MAP
 4. Cowork artifact: same UI, live data
 
+## JMIR 2022 country & institution dashboards (separate platform)
+
+These dashboards use the **2022 JMIR paper corpus** — intentionally **separate** from the journal dashboard while that is under external editor review. A new SciScore v3 dataset will replace this in a future release; do not merge the two data sources on one page yet.
+
+| Dashboard | URL (GitHub Pages) | Data source |
+|-----------|-------------------|-------------|
+| Country | `SciScore_country_dashboard.html` | `data/jmir_*_by_country_by_year.csv` |
+| Institution | `SciScore_institution_dashboard.html` | `data/jmir_*_by_institution_by_year.csv` + optional ROR |
+
+### Regenerating JMIR dashboards
+
+```bash
+# Country (175 countries, 1997–2020)
+python3 scripts/build_country_dashboard.py
+
+# ROR matching (institutions) — rate-limited API, ~1 hour for full corpus
+python3 scripts/match_ror.py --sample 100    # quick test
+python3 scripts/match_ror.py --resume         # full batch, resumable
+
+# Institution dashboard (embeds ROR from data/ror_matches.json when present)
+python3 scripts/build_institution_dashboard.py
+```
+
+Review unmatched institutions in `data/ror_match_review.csv`. ROR hierarchy (parent/child) is shown on institution profiles when relationships exist in the registry.
+
+### JMIR pipeline files
+
+```
+scripts/entity_data_io.py           # JMIR CSV → shared metric keys
+scripts/entity_benchmarks.py        # corpus-wide BY_YEAR_BENCHMARK
+scripts/entity_dashboard_shell.py   # HTML/CSS/JS generator
+scripts/build_country_dashboard.py
+scripts/build_institution_dashboard.py
+scripts/match_ror.py                # ROR affiliation + query matching
+data/ror_matches.json               # generated ROR enrichments
+data/ror_match_review.csv           # match audit for manual review
+```
+
 ## Key files
 
 ```
-SciScore_journal_dashboard.html   # app + embedded data
+SciScore_journal_dashboard.html   # app + embedded data (v3 — editor review)
+SciScore_country_dashboard.html   # JMIR 2022 country dashboard
+SciScore_institution_dashboard.html  # JMIR 2022 institution + ROR
 design/                           # template PPTX, logos, icons
 scripts/embed_brand_assets.py     # extract branding → HTML
 scripts/brand_config.json         # generated brand manifest
