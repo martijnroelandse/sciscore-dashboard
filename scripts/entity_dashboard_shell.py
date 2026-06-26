@@ -56,6 +56,7 @@ SHARED_CSS = """
   .panel-body { padding: 0 18px 18px; }
   .detail-panel.collapsed .panel-body { display: none; }
   .chart-wrap { position: relative; height: 195px; }
+  .chart-wrap-radar { position: relative; height: 300px; }
   .resource-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; }
   .resource-row { display: flex; align-items: center; gap: 10px; }
   .res-name { font-size: 0.78rem; width: 110px; color: var(--muted); flex-shrink: 0; }
@@ -218,7 +219,111 @@ function destroyCharts() {
 }
 
 function togglePanel(id) {
-  document.getElementById(id)?.classList.toggle('collapsed');
+  const panel = document.getElementById(id);
+  panel?.classList.toggle('collapsed');
+  if (panel && !panel.classList.contains('collapsed')) {
+    requestAnimationFrame(() => {
+      if (id === 'panelTrend' && charts.trend) charts.trend.resize();
+      if (id === 'panelStudy' && charts.radar) charts.radar.resize();
+    });
+  }
+}
+
+const RADAR_METRICS = ['sex', 'pwr', 'rand', 'blind', 'irb', 'iacuc'];
+const RADAR_LABELS = ['Sex of subjects', 'Power analysis', 'Randomization', 'Blinding', 'IRB / Ethics', 'IACUC'];
+
+function radarMetricValues(yd) {
+  return RADAR_METRICS.map(k => yd[k] != null ? Math.round(yd[k] * 100) : 0);
+}
+
+function radarAxisRange(allVals) {
+  const nums = allVals.filter(v => typeof v === 'number' && !isNaN(v));
+  if (!nums.length) return { min: 0, max: 100 };
+  const peak = Math.max(...nums);
+  if (peak <= 55) {
+    const max = Math.min(100, Math.ceil((peak + 8) / 10) * 10);
+    return { min: 0, max: Math.max(max, 40) };
+  }
+  return { min: 0, max: 100 };
+}
+
+function radarDatasets(year, vals, label) {
+  const datasets = [{
+    label, data: vals,
+    borderColor: BLUE, backgroundColor: BLUE_DIM,
+    pointBackgroundColor: BLUE, pointBorderColor: '#0D1B3E', pointBorderWidth: 2, pointRadius: 5,
+  }];
+  const compare = compareBenchmark(year);
+  if (compare) {
+    const compareVals = RADAR_METRICS.map(k => compare[k] != null ? Math.round(compare[k] * 100) : 0);
+    datasets.push({
+      label: 'Corpus average', data: compareVals,
+      borderColor: 'rgba(168,200,224,0.7)', backgroundColor: 'rgba(168,200,224,0.08)',
+      pointBackgroundColor: 'rgba(168,200,224,0.7)', pointBorderColor: '#0D1B3E', pointBorderWidth: 1,
+      pointRadius: 3, borderDash: [4, 4],
+    });
+  }
+  return datasets;
+}
+
+function radarChartOptions(allVals) {
+  const range = radarAxisRange(allVals);
+  const step = range.max <= 50 ? 10 : 25;
+  return {
+    responsive: true, maintainAspectRatio: false,
+    layout: { padding: { top: 10, bottom: 10, left: 14, right: 14 } },
+    plugins: {
+      legend: { display: true, position: 'top', labels: { color: MUTED, font: { size: 11 }, boxWidth: 12, padding: 14 } },
+      tooltip: {
+        backgroundColor: '#132348', borderColor: BLUE, borderWidth: 1,
+        titleColor: '#E8F0F8', bodyColor: '#A8C8E0',
+        callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.label} ${ctx.raw}%` },
+      },
+    },
+    scales: {
+      r: {
+        min: range.min, max: range.max,
+        ticks: { color: MUTED, font: { size: 10 }, stepSize: step, backdropColor: 'transparent', showLabelBackdrop: false },
+        grid: { color: BLUE_GRID },
+        angleLines: { color: 'rgba(41,171,226,0.15)' },
+        pointLabels: { color: '#C8DCEF', font: { size: 11, weight: '500' }, padding: 12 },
+      },
+    },
+  };
+}
+
+const SORT_LABELS = {
+  'papers-desc': 'papers (most)',
+  'rti-desc': 'RTI (highest)',
+  'rti-asc': 'RTI (lowest)',
+  'name-asc': 'name (A–Z)',
+};
+
+function getSortMode() {
+  return document.getElementById('entitySort')?.value || 'papers-desc';
+}
+
+function sortModeLabel(mode) {
+  return SORT_LABELS[mode] || mode;
+}
+
+function sortEntityKeys(keys, mode, dataMap, year, getName) {
+  const nameFn = getName || (k => k);
+  return [...keys].sort((a, b) => {
+    const ya = dataMap[a]?.y?.[year];
+    const yb = dataMap[b]?.y?.[year];
+    if (mode === 'rti-desc') {
+      const ra = ya?.r ?? -Infinity, rb = yb?.r ?? -Infinity;
+      return rb - ra || nameFn(a).localeCompare(nameFn(b));
+    }
+    if (mode === 'rti-asc') {
+      const ra = ya?.r ?? Infinity, rb = yb?.r ?? Infinity;
+      return ra - rb || nameFn(a).localeCompare(nameFn(b));
+    }
+    if (mode === 'name-asc') return nameFn(a).localeCompare(nameFn(b));
+    const na = ya?.n || 0, nb = yb?.n || 0;
+    return nb - na || nameFn(a).localeCompare(nameFn(b));
+  });
 }
 
 function renderDetailPanels(prefix) {
@@ -235,7 +340,7 @@ function renderDetailPanels(prefix) {
       <button type="button" class="panel-toggle" onclick="togglePanel('panelStudy')">
         <span class="panel-toggle-title">Study Design · <span id="radarYear"></span></span><span>▼</span>
       </button>
-      <div class="panel-body"><div class="chart-wrap"><canvas id="radarChart"></canvas></div></div>
+      <div class="panel-body"><div class="chart-wrap chart-wrap-radar"><canvas id="radarChart"></canvas></div></div>
     </div>
     <div class="detail-panel" id="panelResource">
       <button type="button" class="panel-toggle" onclick="togglePanel('panelResource')">
@@ -270,16 +375,13 @@ function updateYearPanels(yd, year, trendYears, trendValues, radarLabel) {
   document.getElementById('openScienceGrid').innerHTML = renderMetricBarGrid(OPEN_SCIENCE_ROWS, yd);
 
   if (charts.radar) charts.radar.destroy();
-  const radarLabels = ['Sex','Power','Randomization','Blinding','IRB','IACUC'];
-  const radarVals = [yd.sex, yd.pwr, yd.rand, yd.blind, yd.irb, yd.iacuc].map(v => v != null ? Math.round(v*100) : 0);
+  const radarVals = radarMetricValues(yd);
+  const datasets = radarDatasets(year, radarVals, radarLabel);
+  const allVals = datasets.flatMap(ds => ds.data);
   charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
     type: 'radar',
-    data: { labels: radarLabels, datasets: [{ label: radarLabel, data: radarVals, borderColor: BLUE, backgroundColor: BLUE_DIM, pointBackgroundColor: BLUE }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: MUTED } } },
-      scales: { r: { min: 0, max: 100, ticks: { color: MUTED, stepSize: 25 }, grid: { color: BLUE_GRID }, pointLabels: { color: MUTED } } }
-    }
+    data: { labels: RADAR_LABELS, datasets },
+    options: radarChartOptions(allVals),
   });
 }
 """
@@ -290,11 +392,7 @@ def _country_app_js() -> str:
 let selectedCountry = null;
 const ENTITY_MAP = DATA.c;
 const LATEST_YEAR = String(Math.max(...Object.keys(BY_YEAR_BENCHMARK).map(y => +y)));
-const ALL_KEYS = Object.keys(ENTITY_MAP).sort((a, b) => {
-  const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
-  const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
-  return nb - na || a.localeCompare(b);
-});
+const ALL_KEYS = Object.keys(ENTITY_MAP);
 const YEARS = [...new Set(ALL_KEYS.flatMap(k => Object.keys(ENTITY_MAP[k].y || {})))].sort((a,b) => +a - +b);
 
 function latestYearFor(key) {
@@ -306,9 +404,10 @@ function renderEntityList() {
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   const list = document.getElementById('entityList');
   list.innerHTML = '';
-  const filtered = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  const matched = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  const filtered = sortEntityKeys(matched, getSortMode(), ENTITY_MAP, LATEST_YEAR);
   document.getElementById('entityCountLabel').textContent =
-    `${filtered.length.toLocaleString()} countries · sorted by ${LATEST_YEAR} papers`;
+    `${filtered.length.toLocaleString()} countries · sorted by ${sortModeLabel(getSortMode())}`;
   filtered.forEach(k => {
     const ly = latestYearFor(k);
     const yd = ENTITY_MAP[k]?.y?.[ly];
@@ -369,6 +468,7 @@ function renderYearContent() {
 
 function initCountryDashboard() {
   document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  document.getElementById('entitySort').addEventListener('change', renderEntityList);
   renderEntityList();
   const defaultCountry = ALL_KEYS.includes('United States') ? 'United States' : ALL_KEYS[0];
   if (defaultCountry) selectCountry(defaultCountry);
@@ -424,18 +524,18 @@ function renderRorPanel(entry) {
 }
 
 function sortedKeys(keys) {
-  return [...keys].sort((a, b) => {
-    const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
-    const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
-    return nb - na || displayName(a).localeCompare(displayName(b));
-  });
+  return sortEntityKeys(keys, getSortMode(), ENTITY_MAP, LATEST_YEAR, displayName);
 }
 
-function filteredKeys() {
+function matchingKeys() {
   let keys = selectedCountry ? (BY_COUNTRY[selectedCountry] || []) : ALL_KEYS;
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   if (q) keys = keys.filter(k => displayName(k).toLowerCase().includes(q) || k.toLowerCase().includes(q));
-  return sortedKeys(keys).slice(0, 500);
+  return keys;
+}
+
+function filteredKeys() {
+  return sortedKeys(matchingKeys()).slice(0, 500);
 }
 
 function populateCountries() {
@@ -450,18 +550,18 @@ function populateCountries() {
 function renderEntityList() {
   const list = document.getElementById('entityList');
   list.innerHTML = '';
-  const keys = filteredKeys();
-  const total = selectedCountry ? (BY_COUNTRY[selectedCountry] || []).length : ALL_KEYS.length;
-  const suffix = keys.length < total ? ` (top ${keys.length} by ${LATEST_YEAR} papers)` : '';
+  const matched = matchingKeys();
+  const keys = sortedKeys(matched).slice(0, 500);
+  const suffix = keys.length < matched.length ? ` (top ${keys.length} of ${matched.length.toLocaleString()})` : '';
   document.getElementById('entityCountLabel').textContent =
-    `${keys.length.toLocaleString()} institutions shown${suffix}`;
+    `${keys.length.toLocaleString()} institutions${suffix} · sorted by ${sortModeLabel(getSortMode())}`;
   keys.forEach(k => {
     const entry = ENTITY_MAP[k];
     const ly = LATEST_YEAR;
     const yd = entry?.y?.[ly];
     const el = document.createElement('div');
     el.className = 'entity-item' + (k === selectedInstitution ? ' active' : '');
-    el.innerHTML = `<div>${displayName(k)}</div><div class="entity-item-sub">${entry.country || ''}${yd?.n ? ' · ' + yd.n.toLocaleString() + ' papers' : ''}${entry.ror ? ' · ROR' : ''}</div>`;
+    el.innerHTML = `<div>${displayName(k)}</div><div class="entity-item-sub">${entry.country || ''}${yd?.n ? ' · ' + yd.n.toLocaleString() + ' papers' : ''}${yd?.r != null ? ' · RTI ' + yd.r.toFixed(1) : ''}${entry.ror ? ' · ROR' : ''}</div>`;
     el.onclick = () => selectInstitution(k);
     list.appendChild(el);
   });
@@ -592,6 +692,11 @@ function renderInstitutionYear() {
 function initInstitutionDashboard() {
   document.getElementById('countrySelect').addEventListener('change', selectCountryFilter);
   document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  document.getElementById('entitySort').addEventListener('change', () => {
+    renderEntityList();
+    if (selectedInstitution) renderMain();
+    else if (selectedCountry) renderPortfolioYear();
+  });
   if (!ALL_COUNTRIES.includes(selectedCountry)) {
     selectedCountry = ALL_COUNTRIES.includes('United States') ? 'United States' : (ALL_COUNTRIES[0] || '');
   }
@@ -617,20 +722,30 @@ def render_dashboard_html(
     data_json = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
     bench_json = json.dumps(benchmark, separators=(",", ":"), ensure_ascii=False)
 
+    sort_select = """
+    <div class="sidebar-section"><div class="sidebar-label">Sort by</div>
+      <select id="entitySort">
+        <option value="papers-desc">Papers (most)</option>
+        <option value="rti-desc">RTI (highest)</option>
+        <option value="rti-asc">RTI (lowest)</option>
+        <option value="name-asc">Name (A–Z)</option>
+      </select></div>"""
     if entity_type == "country":
-        sidebar = """
+        sidebar = f"""
     <div class="sidebar-section"><div class="sidebar-label">Search country</div>
       <input type="text" id="entitySearch" placeholder="Type country name…"></div>
+    {sort_select}
     <div class="sidebar-section"><span id="entityCountLabel" style="font-size:0.75rem;color:var(--muted)"></span></div>
     <div class="entity-list" id="entityList"></div>"""
         app_js = _country_app_js()
         sidebar_count_script = ""
     else:
-        sidebar = """
+        sidebar = f"""
     <div class="sidebar-section"><div class="sidebar-label">Country</div>
       <select id="countrySelect"><option value="">All countries</option></select></div>
     <div class="sidebar-section"><div class="sidebar-label">Search institution</div>
       <input type="text" id="entitySearch" placeholder="Type institution name…"></div>
+    {sort_select}
     <div class="sidebar-section"><span id="entityCountLabel" style="font-size:0.75rem;color:var(--muted)"></span></div>
     <div class="entity-list" id="entityList"></div>"""
         app_js = _institution_app_js()
