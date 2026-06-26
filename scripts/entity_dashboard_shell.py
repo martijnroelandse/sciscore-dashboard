@@ -275,10 +275,11 @@ function updateYearPanels(yd, year, trendYears, trendValues, radarLabel) {
   charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
     type: 'radar',
     data: { labels: radarLabels, datasets: [{ label: radarLabel, data: radarVals, borderColor: BLUE, backgroundColor: BLUE_DIM, pointBackgroundColor: BLUE }] },
-    options: { responsive: true, maintainAspectRatio: false,
+    options: {
+      responsive: true, maintainAspectRatio: false,
       plugins: { legend: { labels: { color: MUTED } } },
-      scales: { r: { min: 0, max: 100, ticks: { color: MUTED, stepSize: 25 }, grid: { color: BLUE_GRID }, pointLabels: { color: MUTED } } } },
-    },
+      scales: { r: { min: 0, max: 100, ticks: { color: MUTED, stepSize: 25 }, grid: { color: BLUE_GRID }, pointLabels: { color: MUTED } } }
+    }
   });
 }
 """
@@ -288,17 +289,32 @@ def _country_app_js() -> str:
     return r"""
 let selectedCountry = null;
 const ENTITY_MAP = DATA.c;
-const ALL_KEYS = Object.keys(ENTITY_MAP).sort();
+const LATEST_YEAR = String(Math.max(...Object.keys(BY_YEAR_BENCHMARK).map(y => +y)));
+const ALL_KEYS = Object.keys(ENTITY_MAP).sort((a, b) => {
+  const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
+  const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
+  return nb - na || a.localeCompare(b);
+});
 const YEARS = [...new Set(ALL_KEYS.flatMap(k => Object.keys(ENTITY_MAP[k].y || {})))].sort((a,b) => +a - +b);
+
+function latestYearFor(key) {
+  const ys = Object.keys(ENTITY_MAP[key]?.y || {}).sort((a,b) => +a - +b);
+  return ys[ys.length - 1];
+}
 
 function renderEntityList() {
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   const list = document.getElementById('entityList');
   list.innerHTML = '';
-  ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q)).forEach(k => {
+  const filtered = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  document.getElementById('entityCountLabel').textContent =
+    `${filtered.length.toLocaleString()} countries · sorted by ${LATEST_YEAR} papers`;
+  filtered.forEach(k => {
+    const ly = latestYearFor(k);
+    const yd = ENTITY_MAP[k]?.y?.[ly];
     const el = document.createElement('div');
     el.className = 'entity-item' + (k === selectedCountry ? ' active' : '');
-    el.textContent = k;
+    el.innerHTML = `<div>${k}</div><div class="entity-item-sub">${yd?.n ? yd.n.toLocaleString() + ' papers · RTI ' + (yd.r?.toFixed(1) || '—') : ''}</div>`;
     el.onclick = () => selectCountry(k);
     list.appendChild(el);
   });
@@ -351,19 +367,25 @@ function renderYearContent() {
   updateYearPanels(yd, selectedYear, years, years.map(y => ENTITY_MAP[selectedCountry].y[y]?.r), selectedCountry);
 }
 
-document.getElementById('entitySearch').addEventListener('input', renderEntityList);
-renderEntityList();
-renderMain();
+function initCountryDashboard() {
+  document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  renderEntityList();
+  const defaultCountry = ALL_KEYS.includes('United States') ? 'United States' : ALL_KEYS[0];
+  if (defaultCountry) selectCountry(defaultCountry);
+}
+
+initCountryDashboard();
 """
 
 
 def _institution_app_js() -> str:
     return r"""
-let selectedCountry = '';
+let selectedCountry = 'United States';
 let selectedInstitution = null;
 const ENTITY_MAP = DATA.i;
 const BY_COUNTRY = DATA.by_country || {};
 const ALL_COUNTRIES = Object.keys(BY_COUNTRY).sort();
+const LATEST_YEAR = String(Math.max(...Object.keys(BY_YEAR_BENCHMARK).map(y => +y)));
 const ALL_KEYS = Object.keys(ENTITY_MAP).sort();
 const YEARS = [...new Set(ALL_KEYS.flatMap(k => Object.keys(ENTITY_MAP[k].y || {})))].sort((a,b) => +a - +b);
 
@@ -378,7 +400,7 @@ function rorLink(ror) {
 
 function renderRorPanel(entry) {
   const ror = entry.ror;
-  if (!ror) return '<div class="ror-panel">No ROR match yet — run <code>scripts/match_ror.py</code> to enrich.</div>';
+  if (!ror) return '<div class="ror-panel">No ROR match — sub-units may not have a separate ROR record.</div>';
   const shortId = ror.id.replace('https://ror.org/', '');
   let html = `<div class="ror-panel"><strong>ROR:</strong> <a href="https://ror.org/${shortId}" target="_blank" style="color:var(--blue-light)">${ror.name || shortId}</a>`;
   if (ror.types?.length) html += ` · ${ror.types.join(', ')}`;
@@ -401,29 +423,45 @@ function renderRorPanel(entry) {
   return html + '</div>';
 }
 
+function sortedKeys(keys) {
+  return [...keys].sort((a, b) => {
+    const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
+    const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
+    return nb - na || displayName(a).localeCompare(displayName(b));
+  });
+}
+
 function filteredKeys() {
   let keys = selectedCountry ? (BY_COUNTRY[selectedCountry] || []) : ALL_KEYS;
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   if (q) keys = keys.filter(k => displayName(k).toLowerCase().includes(q) || k.toLowerCase().includes(q));
-  return keys.slice(0, 500);
+  return sortedKeys(keys).slice(0, 500);
 }
 
 function populateCountries() {
   const sel = document.getElementById('countrySelect');
+  if (!ALL_COUNTRIES.includes(selectedCountry) && ALL_COUNTRIES.length) {
+    selectedCountry = ALL_COUNTRIES.includes('United States') ? 'United States' : ALL_COUNTRIES[0];
+  }
   sel.innerHTML = '<option value="">All countries</option>' +
-    ALL_COUNTRIES.map(c => `<option value="${c}"${c===selectedCountry?' selected':''}>${c}</option>`).join('');
+    ALL_COUNTRIES.map(c => `<option value="${c.replace(/"/g,'&quot;')}"${c===selectedCountry?' selected':''}>${c}</option>`).join('');
 }
 
 function renderEntityList() {
   const list = document.getElementById('entityList');
   list.innerHTML = '';
   const keys = filteredKeys();
-  document.getElementById('entityCountLabel').textContent = `${keys.length.toLocaleString()} institutions shown`;
+  const total = selectedCountry ? (BY_COUNTRY[selectedCountry] || []).length : ALL_KEYS.length;
+  const suffix = keys.length < total ? ` (top ${keys.length} by ${LATEST_YEAR} papers)` : '';
+  document.getElementById('entityCountLabel').textContent =
+    `${keys.length.toLocaleString()} institutions shown${suffix}`;
   keys.forEach(k => {
     const entry = ENTITY_MAP[k];
+    const ly = LATEST_YEAR;
+    const yd = entry?.y?.[ly];
     const el = document.createElement('div');
     el.className = 'entity-item' + (k === selectedInstitution ? ' active' : '');
-    el.innerHTML = `<div>${displayName(k)}</div><div class="entity-item-sub">${entry.country || ''}${entry.ror ? ' · ROR' : ''}</div>`;
+    el.innerHTML = `<div>${displayName(k)}</div><div class="entity-item-sub">${entry.country || ''}${yd?.n ? ' · ' + yd.n.toLocaleString() + ' papers' : ''}${entry.ror ? ' · ROR' : ''}</div>`;
     el.onclick = () => selectInstitution(k);
     list.appendChild(el);
   });
@@ -433,6 +471,11 @@ function selectInstitution(key) {
   selectedInstitution = key;
   const years = YEARS.filter(y => ENTITY_MAP[key]?.y?.[y]);
   selectedYear = years[years.length - 1] || null;
+  if (!selectedCountry) {
+    const c = ENTITY_MAP[key]?.country;
+    if (c && BY_COUNTRY[c]) selectedCountry = c;
+  }
+  populateCountries();
   renderEntityList();
   renderMain();
 }
@@ -522,14 +565,19 @@ function renderPortfolioYear() {
   document.getElementById('tableYear').textContent = selectedYear;
   const years = YEARS.filter(y => keys.some(k => ENTITY_MAP[k]?.y?.[y]));
   updateYearPanels(yd, selectedYear, years, years.map(y => aggregateYear(keys, y, ENTITY_MAP)?.r), selectedCountry);
-  const ranked = keys.map(k => ({ k, yd: ENTITY_MAP[k]?.y?.[selectedYear] })).filter(x => x.yd?.n).sort((a,b) => (b.yd.r||0)-(a.yd.r||0));
-  document.getElementById('instTableBody').innerHTML = ranked.map(({k, yd: jyd}) => {
+  const ranked = sortedKeys(keys).map(k => ({ k, yd: ENTITY_MAP[k]?.y?.[selectedYear] })).filter(x => x.yd?.n);
+  const tbody = document.getElementById('instTableBody');
+  tbody.innerHTML = '';
+  ranked.forEach(({ k, yd: jyd }) => {
     const ror = ENTITY_MAP[k].ror;
-    const rorCell = ror ? `<a href="${ror.id}" target="_blank" style="color:var(--blue-light);font-size:0.72rem">✓</a>` : '—';
-    return `<tr onclick="selectInstitution('${k.replace(/'/g,"\\'")}')"><td>${displayName(k)}</td>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${displayName(k)}</td>
       <td style="text-align:right;font-weight:700;color:var(--blue-light)">${jyd.r?.toFixed(1)||'—'}</td>
-      <td style="text-align:right">${jyd.n}</td><td>${rorCell}</td></tr>`;
-  }).join('');
+      <td style="text-align:right">${jyd.n}</td>
+      <td>${ror ? '<span style="color:var(--blue-light);font-size:0.72rem">✓</span>' : '—'}</td>`;
+    tr.onclick = () => selectInstitution(k);
+    tbody.appendChild(tr);
+  });
 }
 
 function renderInstitutionYear() {
@@ -541,11 +589,18 @@ function renderInstitutionYear() {
   updateYearPanels(yd, selectedYear, years, years.map(y => ENTITY_MAP[selectedInstitution].y[y]?.r), name);
 }
 
-document.getElementById('countrySelect').addEventListener('change', selectCountryFilter);
-document.getElementById('entitySearch').addEventListener('input', renderEntityList);
-populateCountries();
-renderEntityList();
-renderMain();
+function initInstitutionDashboard() {
+  document.getElementById('countrySelect').addEventListener('change', selectCountryFilter);
+  document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  if (!ALL_COUNTRIES.includes(selectedCountry)) {
+    selectedCountry = ALL_COUNTRIES.includes('United States') ? 'United States' : (ALL_COUNTRIES[0] || '');
+  }
+  populateCountries();
+  renderEntityList();
+  renderMain();
+}
+
+initInstitutionDashboard();
 """
 
 
@@ -569,8 +624,7 @@ def render_dashboard_html(
     <div class="sidebar-section"><span id="entityCountLabel" style="font-size:0.75rem;color:var(--muted)"></span></div>
     <div class="entity-list" id="entityList"></div>"""
         app_js = _country_app_js()
-        entity_count = meta.get("entity_count", 0)
-        sidebar_count_script = f"document.getElementById('entityCountLabel').textContent = '{entity_count} countries';"
+        sidebar_count_script = ""
     else:
         sidebar = """
     <div class="sidebar-section"><div class="sidebar-label">Country</div>

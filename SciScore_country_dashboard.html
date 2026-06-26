@@ -293,27 +293,43 @@ function updateYearPanels(yd, year, trendYears, trendValues, radarLabel) {
   charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
     type: 'radar',
     data: { labels: radarLabels, datasets: [{ label: radarLabel, data: radarVals, borderColor: BLUE, backgroundColor: BLUE_DIM, pointBackgroundColor: BLUE }] },
-    options: { responsive: true, maintainAspectRatio: false,
+    options: {
+      responsive: true, maintainAspectRatio: false,
       plugins: { legend: { labels: { color: MUTED } } },
-      scales: { r: { min: 0, max: 100, ticks: { color: MUTED, stepSize: 25 }, grid: { color: BLUE_GRID }, pointLabels: { color: MUTED } } } },
-    },
+      scales: { r: { min: 0, max: 100, ticks: { color: MUTED, stepSize: 25 }, grid: { color: BLUE_GRID }, pointLabels: { color: MUTED } } }
+    }
   });
 }
 
 
 let selectedCountry = null;
 const ENTITY_MAP = DATA.c;
-const ALL_KEYS = Object.keys(ENTITY_MAP).sort();
+const LATEST_YEAR = String(Math.max(...Object.keys(BY_YEAR_BENCHMARK).map(y => +y)));
+const ALL_KEYS = Object.keys(ENTITY_MAP).sort((a, b) => {
+  const na = ENTITY_MAP[a]?.y?.[LATEST_YEAR]?.n || 0;
+  const nb = ENTITY_MAP[b]?.y?.[LATEST_YEAR]?.n || 0;
+  return nb - na || a.localeCompare(b);
+});
 const YEARS = [...new Set(ALL_KEYS.flatMap(k => Object.keys(ENTITY_MAP[k].y || {})))].sort((a,b) => +a - +b);
+
+function latestYearFor(key) {
+  const ys = Object.keys(ENTITY_MAP[key]?.y || {}).sort((a,b) => +a - +b);
+  return ys[ys.length - 1];
+}
 
 function renderEntityList() {
   const q = (document.getElementById('entitySearch').value || '').toLowerCase();
   const list = document.getElementById('entityList');
   list.innerHTML = '';
-  ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q)).forEach(k => {
+  const filtered = ALL_KEYS.filter(k => !q || k.toLowerCase().includes(q));
+  document.getElementById('entityCountLabel').textContent =
+    `${filtered.length.toLocaleString()} countries · sorted by ${LATEST_YEAR} papers`;
+  filtered.forEach(k => {
+    const ly = latestYearFor(k);
+    const yd = ENTITY_MAP[k]?.y?.[ly];
     const el = document.createElement('div');
     el.className = 'entity-item' + (k === selectedCountry ? ' active' : '');
-    el.textContent = k;
+    el.innerHTML = `<div>${k}</div><div class="entity-item-sub">${yd?.n ? yd.n.toLocaleString() + ' papers · RTI ' + (yd.r?.toFixed(1) || '—') : ''}</div>`;
     el.onclick = () => selectCountry(k);
     list.appendChild(el);
   });
@@ -366,11 +382,16 @@ function renderYearContent() {
   updateYearPanels(yd, selectedYear, years, years.map(y => ENTITY_MAP[selectedCountry].y[y]?.r), selectedCountry);
 }
 
-document.getElementById('entitySearch').addEventListener('input', renderEntityList);
-renderEntityList();
-renderMain();
+function initCountryDashboard() {
+  document.getElementById('entitySearch').addEventListener('input', renderEntityList);
+  renderEntityList();
+  const defaultCountry = ALL_KEYS.includes('United States') ? 'United States' : ALL_KEYS[0];
+  if (defaultCountry) selectCountry(defaultCountry);
+}
 
-document.getElementById('entityCountLabel').textContent = '175 countries';
+initCountryDashboard();
+
+
 </script>
 </body>
 </html>
