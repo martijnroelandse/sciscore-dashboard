@@ -15,4 +15,5 @@ data/*.csv
 !data/jmir_*_by_institution*.csv
 !data/ror_match_review.csv
 __pycache__/
-data/ror_match.log
+data/ror_cache/
+data/ror_*_match.log

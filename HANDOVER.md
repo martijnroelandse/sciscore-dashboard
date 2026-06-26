@@ -141,9 +141,18 @@ These dashboards use the **2022 JMIR paper corpus** — intentionally **separate
 # Country (175 countries, 1997–2020)
 python3 scripts/build_country_dashboard.py
 
-# ROR matching (institutions) — rate-limited API, ~1 hour for full corpus
-python3 scripts/match_ror.py --sample 100    # quick test
-python3 scripts/match_ror.py --resume         # full batch, resumable
+# ROR matching (institutions) — local dump by default (fast, no rate limits)
+
+```bash
+# First run downloads ~34 MB ROR dump from Zenodo into data/ror_cache/
+python3 scripts/match_ror.py
+
+# Options
+python3 scripts/match_ror.py --sample 100     # quick test
+python3 scripts/match_ror.py --resume          # skip already-matched keys
+python3 scripts/match_ror.py --api             # legacy: public API (rate-limited)
+python3 scripts/match_ror.py --download        # force re-download ROR dump
+```
 
 # Institution dashboard (embeds ROR from data/ror_matches.json when present)
 python3 scripts/build_institution_dashboard.py
@@ -159,7 +168,8 @@ scripts/entity_benchmarks.py        # corpus-wide BY_YEAR_BENCHMARK
 scripts/entity_dashboard_shell.py   # HTML/CSS/JS generator
 scripts/build_country_dashboard.py
 scripts/build_institution_dashboard.py
-scripts/match_ror.py                # ROR affiliation + query matching
+scripts/match_ror.py                # ROR matching (local dump default; --api for public API)
+scripts/ror_local.py              # local ROR index builder + matcher
 data/ror_matches.json               # generated ROR enrichments
 data/ror_match_review.csv           # match audit for manual review
 ```

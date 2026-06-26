@@ -1,23 +1,15 @@
 #!/usr/bin/env python3
-"""Match institution names to ROR IDs via the public ROR API.
+"""Match institution names to ROR IDs.
 
-Strategies (in order):
-  1. Affiliation parameter with name + state + country
-  2. Query parameter with country filter
-  3. Query parameter without filter (name only)
+Default: local matching against the Zenodo ROR data dump (fast, no rate limits).
+Use --api for the public ROR affiliation/query API (slow, rate-limited).
 
-Results are written to data/ror_matches.json keyed by entity_key (name|country).
+Results: data/ror_matches.json keyed by entity_key (name|country).
 """
 from __future__ import annotations
 
 import json
-import re
 import sys
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
-from difflib import SequenceMatcher
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,160 +19,8 @@ if str(SCRIPTS) not in sys.path:
 
 from entity_data_io import entity_key, find_institution_csv, read_csv_rows
 
-ROR_API = "https://api.ror.org/v2/organizations"
 OUTPUT = ROOT / "data" / "ror_matches.json"
 REVIEW_CSV = ROOT / "data" / "ror_match_review.csv"
-
-MIN_INTERVAL = 0.22
-_last_request = 0.0
-
-
-def _throttle() -> None:
-    global _last_request
-    elapsed = time.time() - _last_request
-    if elapsed < MIN_INTERVAL:
-        time.sleep(MIN_INTERVAL - elapsed)
-    _last_request = time.time()
-
-
-def _fetch_json(url: str) -> dict | None:
-    _throttle()
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
-        print(f"  WARN: {exc}", file=sys.stderr)
-        return None
-
-
-def _normalize_name(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r"[^\w\s]", " ", text)
-    return re.sub(r"\s+", " ", text)
-
-
-def _similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize_name(a), _normalize_name(b)).ratio()
-
-
-def _primary_name(org: dict) -> str:
-    names = org.get("names") or []
-    for item in names:
-        if item.get("types") and "ror_display" in item["types"]:
-            return item.get("value", "")
-    return names[0].get("value", "") if names else ""
-
-
-def _country_name(org: dict) -> str:
-    locs = org.get("locations") or []
-    if not locs:
-        return ""
-    geo = locs[0].get("geonames_details") or {}
-    return geo.get("country_name") or ""
-
-
-def _extract_hierarchy(org: dict) -> dict:
-    parents: list[dict] = []
-    children: list[dict] = []
-    related: list[dict] = []
-
-    for rel in org.get("relationships") or []:
-        entry = {
-            "id": rel.get("id", ""),
-            "label": rel.get("label", ""),
-            "type": rel.get("type", ""),
-        }
-        rtype = (rel.get("type") or "").lower()
-        if rtype == "parent":
-            parents.append(entry)
-        elif rtype == "child":
-            children.append(entry)
-        else:
-            related.append(entry)
-
-    return {"parents": parents, "children": children, "related": related}
-
-
-def _org_to_match(org: dict, method: str, score: float = 1.0) -> dict:
-    hierarchy = _extract_hierarchy(org)
-    return {
-        "id": org.get("id", ""),
-        "name": _primary_name(org),
-        "types": org.get("types") or [],
-        "country": _country_name(org),
-        "established": org.get("established"),
-        "method": method,
-        "score": round(score, 3),
-        "chosen": method.startswith("affiliation"),
-        "parents": hierarchy["parents"],
-        "children": hierarchy["children"],
-        "related": hierarchy["related"],
-    }
-
-
-def _affiliation_string(name: str, country: str, state: str = "") -> str:
-    parts = [name]
-    if state and state.upper() != "NULL":
-        parts.append(state)
-    if country:
-        parts.append(country)
-    return ", ".join(parts)
-
-
-def match_affiliation(name: str, country: str, state: str = "") -> dict | None:
-    aff = _affiliation_string(name, country, state)
-    url = f"{ROR_API}?affiliation={urllib.parse.quote(aff)}"
-    data = _fetch_json(url)
-    if not data:
-        return None
-    for item in data.get("items") or []:
-        if item.get("chosen") and item.get("organization"):
-            return _org_to_match(item["organization"], "affiliation", 1.0)
-    return None
-
-
-def match_query(name: str, country: str = "") -> dict | None:
-    query = urllib.parse.quote(name)
-    if country:
-        filt = urllib.parse.quote(f"country.country_name:{country}")
-        url = f"{ROR_API}?query={query}&filter={filt}"
-    else:
-        url = f"{ROR_API}?query={query}"
-    data = _fetch_json(url)
-    if not data:
-        return None
-
-    items = data.get("items") or []
-    if not items:
-        return None
-
-    best = None
-    best_score = 0.0
-    for org in items[:10]:
-        ror_name = _primary_name(org)
-        score = _similarity(name, ror_name)
-        if country:
-            org_country = _country_name(org)
-            if org_country and _normalize_name(org_country) != _normalize_name(country):
-                score *= 0.5
-        if score > best_score:
-            best_score = score
-            best = org
-
-    if best and best_score >= 0.55:
-        return _org_to_match(best, f"query({best_score:.2f})", best_score)
-    return None
-
-
-def match_institution(name: str, country: str, state: str = "") -> dict | None:
-    result = match_affiliation(name, country, state)
-    if result:
-        return result
-    result = match_query(name, country)
-    if result:
-        return result
-    return match_query(name)
 
 
 def unique_institutions(rows: list[tuple]) -> list[dict]:
@@ -243,14 +83,147 @@ def write_review_csv(institutions: list[dict], matches: dict[str, dict]) -> None
                 ])
 
 
+def match_local(institutions: list[dict], matches: dict, todo: list[dict]) -> None:
+    from ror_local import RorLocalIndex
+
+    index = RorLocalIndex.load()
+    for i, inst in enumerate(todo, 1):
+        if i % 500 == 0 or i == 1:
+            print(f"  [{i}/{len(todo)}] {inst['name'][:50]}...")
+        result = index.match(inst["name"], inst["country"], inst.get("state", ""))
+        if result:
+            matches[inst["key"]] = result
+
+
+def match_api(institutions: list[dict], matches: dict, todo: list[dict]) -> None:
+    """Legacy API matcher (rate-limited)."""
+    import re
+    import time
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from difflib import SequenceMatcher
+
+    ROR_API = "https://api.ror.org/v2/organizations"
+    MIN_INTERVAL = 0.22
+    last_request = 0.0
+
+    def throttle() -> None:
+        nonlocal last_request
+        elapsed = time.time() - last_request
+        if elapsed < MIN_INTERVAL:
+            time.sleep(MIN_INTERVAL - elapsed)
+        last_request = time.time()
+
+    def fetch_json(url: str) -> dict | None:
+        throttle()
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+            return None
+
+    def normalize_name(text: str) -> str:
+        text = text.lower().strip()
+        text = re.sub(r"[^\w\s]", " ", text)
+        return re.sub(r"\s+", " ", text)
+
+    def primary_name(org: dict) -> str:
+        for item in org.get("names") or []:
+            if item.get("types") and "ror_display" in item["types"]:
+                return item.get("value", "")
+        names = org.get("names") or []
+        return names[0].get("value", "") if names else ""
+
+    def country_name(org: dict) -> str:
+        locs = org.get("locations") or []
+        if not locs:
+            return ""
+        return (locs[0].get("geonames_details") or {}).get("country_name") or ""
+
+    def org_to_match(org: dict, method: str, score: float = 1.0) -> dict:
+        parents, children, related = [], [], []
+        for rel in org.get("relationships") or []:
+            entry = {"id": rel.get("id", ""), "label": rel.get("label", ""), "type": rel.get("type", "")}
+            rtype = (rel.get("type") or "").lower()
+            if rtype == "parent":
+                parents.append(entry)
+            elif rtype == "child":
+                children.append(entry)
+            else:
+                related.append(entry)
+        return {
+            "id": org.get("id", ""), "name": primary_name(org), "types": org.get("types") or [],
+            "country": country_name(org), "established": org.get("established"),
+            "method": method, "score": round(score, 3), "chosen": method.startswith("affiliation"),
+            "parents": parents, "children": children, "related": related,
+        }
+
+    def match_one(name: str, country: str, state: str = "") -> dict | None:
+        parts = [name]
+        if state and state.upper() != "NULL":
+            parts.append(state)
+        if country:
+            parts.append(country)
+        aff = ", ".join(parts)
+        url = f"{ROR_API}?affiliation={urllib.parse.quote(aff)}"
+        data = fetch_json(url)
+        if data:
+            for item in data.get("items") or []:
+                if item.get("chosen") and item.get("organization"):
+                    return org_to_match(item["organization"], "affiliation", 1.0)
+        query = urllib.parse.quote(name)
+        if country:
+            filt = urllib.parse.quote(f"country.country_name:{country}")
+            url = f"{ROR_API}?query={query}&filter={filt}"
+        else:
+            url = f"{ROR_API}?query={query}"
+        data = fetch_json(url)
+        if not data:
+            return None
+        items = data.get("items") or []
+        best, best_score = None, 0.0
+        for org in items[:10]:
+            score = SequenceMatcher(None, normalize_name(name), normalize_name(primary_name(org))).ratio()
+            if country:
+                oc = country_name(org)
+                if oc and normalize_name(oc) != normalize_name(country):
+                    score *= 0.5
+            if score > best_score:
+                best_score, best = score, org
+        if best and best_score >= 0.55:
+            return org_to_match(best, f"query({best_score:.2f})", best_score)
+        return None
+
+    for i, inst in enumerate(todo, 1):
+        if i % 25 == 0 or i == 1:
+            print(f"  [{i}/{len(todo)}] {inst['name'][:50]}...")
+        result = match_one(inst["name"], inst["country"], inst.get("state", ""))
+        if result:
+            matches[inst["key"]] = result
+
+
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Match institutions to ROR IDs")
+    parser.add_argument("--api", action="store_true", help="Use ROR API instead of local dump")
+    parser.add_argument("--rebuild-index", action="store_true", help="Rebuild local ROR index cache")
+    parser.add_argument("--download", action="store_true", help="Force re-download ROR data dump")
     parser.add_argument("--limit", type=int, default=0, help="Max institutions to match (0=all)")
     parser.add_argument("--resume", action="store_true", help="Skip already-matched keys")
     parser.add_argument("--sample", type=int, default=0, help="Match N institutions for testing")
     args = parser.parse_args()
+
+    if args.download or args.rebuild_index:
+        from ror_local import RorLocalIndex, ensure_ror_dump
+        ensure_ror_dump(force=args.download)
+        if args.rebuild_index:
+            RorLocalIndex.load(force_rebuild=True)
+            print("Index rebuilt.")
+            if not args.limit and not args.sample:
+                return 0
 
     path = find_institution_csv()
     if not path:
@@ -276,13 +249,12 @@ def main() -> int:
     if args.limit:
         todo = todo[: args.limit]
 
-    print(f"Matching {len(todo):,} institutions...")
-    for i, inst in enumerate(todo, 1):
-        if i % 25 == 0 or i == 1:
-            print(f"  [{i}/{len(todo)}] {inst['name'][:50]}...")
-        result = match_institution(inst["name"], inst["country"], inst.get("state", ""))
-        if result:
-            matches[inst["key"]] = result
+    mode = "API (rate-limited)" if args.api else "local ROR dump"
+    print(f"Matching {len(todo):,} institutions via {mode}...")
+    if args.api:
+        match_api(institutions, matches, todo)
+    else:
+        match_local(institutions, matches, todo)
 
     save_matches(matches)
     write_review_csv(institutions, matches)
