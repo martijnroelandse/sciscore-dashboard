@@ -11,3 +11,9 @@ data/*.csv
 !data/2026_sciscore_v3*.csv
 !data/*by_year*.csv
 !data/ext_list*.csv
+!data/jmir_*_by_country*.csv
+!data/jmir_*_by_institution*.csv
+!data/ror_match_review.csv
+__pycache__/
+data/ror_cache/
+data/ror_*_match.log
