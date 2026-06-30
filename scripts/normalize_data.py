@@ -18,6 +18,7 @@ CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 
 SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
+PLOS_PUBLISHER = "Public Library of Science"
 
 
 from html_json import extract_json_block, replace_const_block as replace_json_block
@@ -31,11 +32,34 @@ def title_score(name: str) -> int:
     return sum(1 for word in name.split() if word and word[0].isupper())
 
 
+def is_plos_journal(name: str) -> bool:
+    lower = name.lower()
+    if not lower.startswith("plos"):
+        return False
+    return "explos" not in lower and "propellant" not in lower
+
+
+def plos_name_score(name: str) -> int:
+    if name.startswith("PLOS"):
+        return 2
+    if name.startswith("PLoS"):
+        return 1
+    return 0
+
+
 def pick_canonical_name(names: list[str], journals: dict) -> str:
-    def score(name: str) -> tuple[int, int, str]:
-        return (title_score(name), total_papers(journals[name]), name)
+    def score(name: str) -> tuple[int, int, int, str]:
+        return (plos_name_score(name), title_score(name), total_papers(journals[name]), name)
 
     return max(names, key=score)
+
+
+def merged_publisher(variants: list[str], journals: dict) -> str:
+    for name in variants:
+        pub = journals[name].get("pub") or ""
+        if pub:
+            return pub
+    return ""
 
 
 def merge_year_entries(a: dict, b: dict) -> dict:
@@ -53,7 +77,7 @@ def dedupe_journals(journals: dict) -> tuple[dict, dict[str, str]]:
 
     for variants in by_lower.values():
         canonical = pick_canonical_name(variants, journals)
-        entry = {"pub": journals[canonical]["pub"], "y": {}}
+        entry = {"pub": merged_publisher(variants, journals), "y": {}}
         for name in variants:
             for year, yd in journals[name]["y"].items():
                 if year not in entry["y"]:
@@ -94,6 +118,44 @@ def apply_sn_sub_brands(journals: dict) -> int:
             continue
         if brand != pub:
             entry["pub"] = brand
+            changed += 1
+    return changed
+
+
+def plos_canonical_title(name: str) -> str:
+    if name.startswith("PLoS"):
+        return "PLOS" + name[4:]
+    return name
+
+
+def rename_plos_journals(journals: dict) -> tuple[dict, int]:
+    out: dict = {}
+    renames = 0
+    for journal, entry in journals.items():
+        target = plos_canonical_title(journal)
+        if target in out:
+            existing = out[target]
+            for year, yd in entry.get("y", {}).items():
+                if year not in existing["y"]:
+                    existing["y"][year] = dict(yd)
+                else:
+                    existing["y"][year] = merge_year_entries(existing["y"][year], yd)
+            if not existing.get("pub") and entry.get("pub"):
+                existing["pub"] = entry["pub"]
+        else:
+            out[target] = entry
+        if target != journal:
+            renames += 1
+    return out, renames
+
+
+def apply_plos_publisher_overrides(journals: dict) -> int:
+    changed = 0
+    for journal, entry in journals.items():
+        if not is_plos_journal(journal):
+            continue
+        if entry.get("pub") != PLOS_PUBLISHER:
+            entry["pub"] = PLOS_PUBLISHER
             changed += 1
     return changed
 
@@ -159,6 +221,9 @@ def main() -> None:
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
     journals_before = len(data["j"])
     journals, renamed = dedupe_journals(data["j"])
+    plos_renames = rename_plos_journals(journals)
+    journals, plos_rename_count = plos_renames
+    plos_updates = apply_plos_publisher_overrides(journals)
     override_updates, missing_overrides = apply_client_publisher_overrides(journals, client_cfg)
     sn_split = apply_sn_sub_brands(journals)
     publishers = rebuild_publishers(journals)
@@ -184,7 +249,9 @@ def main() -> None:
 
     sn_pubs = [p for p in publishers if p in SN_SUB_BRANDS or p == "Springer Nature Korea"]
     print(f"Journals: {journals_before} -> {len(journals)} ({len(renamed)} merged)")
-    print(f"Publisher overrides applied: {override_updates}")
+    print(f"PLOS journal renames: {plos_rename_count}")
+    print(f"PLOS publisher overrides applied: {plos_updates}")
+    print(f"Client publisher overrides applied: {override_updates}")
     for org, names in sorted(missing_overrides.items()):
         print(f"  {org}: {len(names)} configured journal(s) not in DATA")
     print(f"Springer Nature sub-brand reassignment: {sn_split} journals")

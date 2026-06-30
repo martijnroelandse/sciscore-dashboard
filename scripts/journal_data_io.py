@@ -92,6 +92,18 @@ def load_publisher_map() -> dict[str, str]:
     return mapping
 
 
+def canonicalize_journal_name(name: str, publishers: dict[str, str]) -> str:
+    """Map case/spelling variants to the ext_list title (e.g. PLoS ONE -> PLOS ONE)."""
+    if name in publishers:
+        return name
+    matches = [title for title in publishers if title.lower() == name.lower()]
+    if not matches:
+        return name
+    if len(matches) == 1:
+        return matches[0]
+    return max(matches, key=lambda title: (title.startswith("PLOS"), title))
+
+
 def read_rows(path: Path) -> list[tuple]:
     if path.suffix.lower() == ".csv":
         with path.open(newline="", encoding="utf-8-sig") as handle:
@@ -252,7 +264,7 @@ def build_data(rows: list[tuple]) -> tuple[dict, dict]:
         if not metrics:
             continue
 
-        jname = row[journal_col].strip()
+        jname = canonicalize_journal_name(row[journal_col].strip(), publishers)
         pub = publishers.get(jname, "")
         entry = journals.setdefault(jname, {"pub": pub, "y": {}})
         if pub and not entry["pub"]:
