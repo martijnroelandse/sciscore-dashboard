@@ -4,8 +4,10 @@
 Pipeline after updating the source file:
 
     python3 scripts/embed_journal_data.py
-    python3 scripts/normalize_data.py
     python3 scripts/embed_benchmarks.py
+
+Normalization (dedupe, client publisher overrides, Springer Nature sub-brands)
+runs automatically after embed. Pass --skip-normalize to skip.
 """
 from __future__ import annotations
 
@@ -21,10 +23,13 @@ HTML = ROOT / "SciScore_journal_dashboard.html"
 
 from html_json import extract_json_block, replace_const_block  # noqa: E402
 from journal_data_io import DEFAULT_CSV, build_data, find_journal_source, read_rows  # noqa: E402
+from normalize_data import main as normalize_dashboard  # noqa: E402
 
 
 def main() -> int:
-    explicit = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    skip_normalize = "--skip-normalize" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--skip-normalize"]
+    explicit = Path(args[0]) if args else None
     path = find_journal_source(explicit)
     if not path:
         print("No journal source found.", file=sys.stderr)
@@ -64,7 +69,13 @@ def main() -> int:
     new_metrics = sorted(set(meta["metric_presence"]) - {"n", "r", "sex", "pwr", "rand", "blind", "irb", "iacuc", "ab", "org", "cl", "tool", "abn", "orgn", "cln", "tooln"})
     if new_metrics:
         print(f"New metric keys in embed: {', '.join(new_metrics)}")
-    print("Next: python3 scripts/normalize_data.py && python3 scripts/embed_benchmarks.py")
+    if skip_normalize:
+        print("Skipped normalization (--skip-normalize).")
+        print("Next: python3 scripts/normalize_data.py && python3 scripts/embed_benchmarks.py")
+    else:
+        print("Running normalization...")
+        normalize_dashboard()
+        print("Next: python3 scripts/embed_benchmarks.py")
     return 0
 
 
