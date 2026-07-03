@@ -4,7 +4,23 @@
 
 https://martijnroelandse.github.io/sciscore-dashboard/SciScore_journal_dashboard.html
 
-Deployed via GitHub Pages from `main`.
+Deployed via GitHub Pages from `main` on the **public artifact repo** (`martijnroelandse/sciscore-dashboard`). Source code and raw data live in the private source repo — see [docs/REPO_SPLIT_MIGRATION.md](docs/REPO_SPLIT_MIGRATION.md).
+
+## Public vs private repositories
+
+| Repo | Visibility | Role |
+|------|------------|------|
+| `sciscore-dashboard-private` | Private | Source HTML, `scripts/`, `data/`, docs, CI |
+| `sciscore-dashboard` | Public | Built OA artifacts only (GitHub Pages) |
+
+Publish OA artifacts from the private repo:
+
+```bash
+python3 scripts/publish_oa_artifact.py
+# → writes dist/oa-public/ ; GitHub Action pushes to public repo when OA_ARTIFACT_DEPLOY_KEY is set
+```
+
+See [docs/CLIENT_ACCESS_HANDOVER.md](docs/CLIENT_ACCESS_HANDOVER.md) for client auth, non-OA data, and export (future sciscore.com work). Next phase: [docs/ORCID_EXPORT_NEXT.md](docs/ORCID_EXPORT_NEXT.md).
 
 ## Original vision (three options)
 
@@ -191,4 +207,11 @@ scripts/embed_journal_data.py     # CSV → const DATA
 scripts/journal_data_io.py        # read/parse 2026_sciscore_v3 export
 scripts/inspect_xlsx.py           # audit source columns and year range
 HANDOVER.md                       # this file
+docs/CLIENT_ACCESS_HANDOVER.md    # spec for sciscore.com developer
+docs/REPO_SPLIT_MIGRATION.md      # private/public repo split guide
+docs/ORCID_EXPORT_NEXT.md         # next phase: ORCID + AACR CSV export
+scripts/publish_oa_artifact.py    # build → dist/oa-public/
+scripts/patch_oa_disclaimer.py    # OA disclaimer + client-only export UI
+templates/public-artifact-README.md  # README copied to public repo
+.github/workflows/publish-oa-artifact.yml
 ```
