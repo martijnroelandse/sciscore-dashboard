@@ -17,3 +17,6 @@ data/*.csv
 __pycache__/
 data/ror_cache/
 data/ror_*_match.log
+
+# Built public OA artifact (published to separate public repo)
+dist/

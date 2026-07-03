@@ -353,6 +353,24 @@
   .export-btn:hover { opacity: 0.85; }
   .export-btn.visible { display: block; }
   .export-btn:disabled { opacity: 0.5; cursor: default; }
+  .corpus-notice {
+    margin: 0 16px 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(41,171,226,0.22);
+    background: rgba(41,171,226,0.08);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .corpus-notice strong { color: var(--blue-light); font-weight: 600; }
+  .corpus-notice a { color: var(--blue-light); }
+  .export-btn.client-only {
+    display: block;
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
 
   /* HERO RTI */
   .hero-rti {
@@ -519,7 +537,16 @@
       <select id="journalDisciplineSelect" onchange="onJournalDisciplineChange()"></select>
     </div>
     <div class="sidebar-section">
-      <button class="export-btn" id="exportBtn" onclick="generatePPTX()">&#9654; Export Report</button>
+    <div class="corpus-notice" id="corpusNotice">
+      <strong>Open-access corpus.</strong>
+      Metrics are from the PubMed Central open-access subset only.
+      Journals with paywalled content may be underrepresented.
+      <a href="addendum.html#limitations">Limitations</a>
+      · Full-corpus metrics and CSV export are available to
+      <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore clients</a>
+      (sign-in required).
+    </div>
+      <button class="export-btn client-only" id="exportBtn" type="button" onclick="clientExportNotice()" title="Client export requires sign-in">&#9654; Export (clients only)</button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Search journal</div>
@@ -2569,16 +2596,19 @@ function exportScope() {
   return null;
 }
 
+function clientExportNotice() {
+  alert(
+    'Export (CSV and PowerPoint) is available to SciScore client organizations after sign-in.
+
+' +
+    'Contact SciScore at sciscore.com to request access. AACR full-corpus metrics coming soon.'
+  );
+}
+
 function showExportBtn() {
   const btn = document.getElementById('exportBtn');
-  const scope = exportScope();
   if (!btn) return;
-  btn.classList.toggle('visible', !!scope);
-  if (scope) {
-    btn.innerHTML = scope.singleJournal
-      ? '&#9654; Export Journal Report'
-      : '&#9654; Export Report';
-  }
+  btn.classList.add('visible', 'client-only');
 }
 
 groupSelect.addEventListener('change', () => {
