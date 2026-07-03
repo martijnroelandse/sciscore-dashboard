@@ -353,6 +353,34 @@
   .export-btn:hover { opacity: 0.85; }
   .export-btn.visible { display: block; }
   .export-btn:disabled { opacity: 0.5; cursor: default; }
+  .sidebar-footer {
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--blue-border);
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.12);
+  }
+  .corpus-notice {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(41,171,226,0.22);
+    background: rgba(41,171,226,0.08);
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+  .corpus-notice strong { color: var(--blue-light); font-weight: 600; }
+  .corpus-notice a { color: var(--blue-light); }
+  .export-btn.client-only {
+    display: block;
+    width: 100%;
+    opacity: 1;
+    background: rgba(41,171,226,0.22);
+    border: 1px solid rgba(41,171,226,0.35);
+    cursor: pointer;
+  }
+  .export-btn.client-only:hover { opacity: 0.9; background: rgba(41,171,226,0.32); }
+  #compareSelect { min-height: 2rem; }
   .corpus-notice {
     margin: 0 16px 12px;
     padding: 10px 12px;
@@ -530,25 +558,13 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">Compare against</div>
-      <select id="compareSelect" onchange="onCompareChange()"></select>
+      <select id="compareSelect" onchange="onCompareChange()"><option value="all">All journals</option></select>
     </div>
     <div class="sidebar-section" id="journalDisciplineSection" style="display:none">
       <div class="sidebar-label">Journal discipline</div>
       <select id="journalDisciplineSelect" onchange="onJournalDisciplineChange()"></select>
     </div>
-    <div class="sidebar-section">
-    <div class="corpus-notice" id="corpusNotice">
-      <strong>Open-access corpus.</strong>
-      Metrics are from the PubMed Central open-access subset only.
-      Journals with paywalled content may be underrepresented.
-      <a href="addendum.html#limitations">Limitations</a>
-      · Full-corpus metrics and CSV export are available to
-      <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore clients</a>
-      (sign-in required).
-    </div>
-      <button class="export-btn client-only" id="exportBtn" type="button" onclick="clientExportNotice()" title="Client export requires sign-in">&#9654; Export (clients only)</button>
-    </div>
-    <div class="sidebar-section">
+<div class="sidebar-section">
       <div class="sidebar-label">Search journal</div>
       <input type="text" id="journalSearch" placeholder="Type journal name…">
     </div>
@@ -556,6 +572,17 @@
       <span class="count-label" id="journalCountLabel">Loading…</span>
     </div>
     <div class="journal-list" id="journalList"></div>
+    <div class="sidebar-footer">
+      <div class="corpus-notice" id="corpusNotice">
+        <strong>Open-access corpus.</strong>
+        Metrics use the PubMed Central open-access subset only.
+        <a href="addendum.html#limitations">Limitations</a>
+        · Full-corpus metrics and CSV export:
+        <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore clients</a>
+        (sign-in required).
+      </div>
+      <button class="export-btn client-only visible" id="exportBtn" type="button" onclick="clientExportNotice()" title="Client export requires sign-in">&#9654; Export (clients only)</button>
+    </div>
   </div>
 
   <div class="main" id="main">
@@ -1099,6 +1126,17 @@ const DATA_YEAR_LABEL = YEARS.length
   ? (YEARS[0] === YEARS[YEARS.length - 1] ? YEARS[0] : `${YEARS[0]} – ${YEARS[YEARS.length - 1]}`)
   : '';
 const JOURNAL_COUNT_LABEL = Object.keys(DATA.j).length.toLocaleString();
+(function earlySidebarBoot() {
+  const countEl = document.getElementById('journalCountLabel');
+  if (countEl && typeof JOURNAL_COUNT_LABEL !== 'undefined') {
+    countEl.textContent = `${JOURNAL_COUNT_LABEL} journals`;
+  }
+  const compare = document.getElementById('compareSelect');
+  if (compare && !compare.options.length) {
+    compare.innerHTML = '<option value="all">All journals</option>';
+  }
+})();
+
 const RTI_CHART_MIN = 3;
 const RTI_CHART_MAX = 7;
 const BLUE       = '#29ABE2';

@@ -9,9 +9,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "SciScore_journal_dashboard.html"
 
-CORPUS_NOTICE_CSS = """
+CSS_MARKER = "  .export-btn:disabled { opacity: 0.5; cursor: default; }"
+CSS_ADDITION = """
+  .sidebar-footer {
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--blue-border);
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.12);
+  }
   .corpus-notice {
-    margin: 0 16px 12px;
+    margin: 0 0 10px;
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid rgba(41,171,226,0.22);
@@ -24,21 +31,29 @@ CORPUS_NOTICE_CSS = """
   .corpus-notice a { color: var(--blue-light); }
   .export-btn.client-only {
     display: block;
-    opacity: 0.55;
-    cursor: not-allowed;
+    width: 100%;
+    opacity: 1;
+    background: rgba(41,171,226,0.22);
+    border: 1px solid rgba(41,171,226,0.35);
+    cursor: pointer;
   }
-"""
+  .export-btn.client-only:hover { opacity: 0.9; background: rgba(41,171,226,0.32); }
+  #compareSelect { min-height: 2rem; }"""
 
-CORPUS_NOTICE_HTML = """    <div class="corpus-notice" id="corpusNotice">
-      <strong>Open-access corpus.</strong>
-      Metrics are from the PubMed Central open-access subset only.
-      Journals with paywalled content may be underrepresented.
-      <a href="addendum.html#limitations">Limitations</a>
-      · Full-corpus metrics and CSV export are available to
-      <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore clients</a>
-      (sign-in required).
-    </div>
-      <button class="export-btn client-only" id="exportBtn" type="button" onclick="clientExportNotice()" title="Client export requires sign-in">&#9654; Export (clients only)</button>"""
+CORPUS_HTML = """      <div class="corpus-notice" id="corpusNotice">
+        <strong>Open-access corpus.</strong>
+        Metrics use the PubMed Central open-access subset only.
+        <a href="addendum.html#limitations">Limitations</a>
+        · Full-corpus metrics and CSV export:
+        <a href="https://sciscore.com" target="_blank" rel="noopener">SciScore clients</a>
+        (sign-in required).
+      </div>
+      <button class="export-btn client-only visible" id="exportBtn" type="button" onclick="clientExportNotice()" title="Client export requires sign-in">&#9654; Export (clients only)</button>"""
+
+SIDEBAR_FOOTER = f"""
+    <div class="sidebar-footer">
+{CORPUS_HTML}
+    </div>"""
 
 CLIENT_EXPORT_NOTICE_JS = """function clientExportNotice() {
   alert(
@@ -53,19 +68,27 @@ function showExportBtn() {
   btn.classList.add('visible', 'client-only');
 }"""
 
-OLD_EXPORT_BLOCK_RE = re.compile(
-    r'<div class="sidebar-section">\s*'
-    r'(?:<div class="corpus-notice"[^>]*>.*?</div>\s*)?'
-    r'<button class="export-btn[^"]*" id="exportBtn"[^>]*>.*?</button>\s*'
-    r'(?:&#9654; Export Report</button>\s*)?'
-    r'</div>',
-    re.DOTALL,
-)
+EARLY_BOOT = """
+(function earlySidebarBoot() {
+  const countEl = document.getElementById('journalCountLabel');
+  if (countEl && typeof JOURNAL_COUNT_LABEL !== 'undefined') {
+    countEl.textContent = `${JOURNAL_COUNT_LABEL} journals`;
+  }
+  const compare = document.getElementById('compareSelect');
+  if (compare && !compare.options.length) {
+    compare.innerHTML = '<option value="all">All journals</option>';
+  }
+})();
+"""
 
-NEW_EXPORT_BLOCK = (
-    '<div class="sidebar-section">\n'
-    + CORPUS_NOTICE_HTML
-    + "\n    </div>"
+MIDDLE_EXPORT_RE = re.compile(
+    r'\s*<div class="sidebar-section">\s*'
+    r'<div class="corpus-notice"[^>]*>.*?</div>\s*'
+    r'<button class="export-btn[^"]*" id="exportBtn"[^>]*>.*?</button>\s*'
+    r'</div>\s*'
+    r'(<div class="sidebar-section">\s*'
+    r'<div class="sidebar-label">Search journal</div>)',
+    re.DOTALL,
 )
 
 
@@ -77,46 +100,62 @@ def main() -> int:
     content = HTML.read_text(encoding="utf-8")
     changed = False
 
-    if ".corpus-notice" not in content:
+    if ".sidebar-footer" not in content:
+        if ".corpus-notice" in content and CSS_MARKER in content:
+            content = content.replace(
+                CSS_MARKER,
+                CSS_MARKER + CSS_ADDITION,
+                1,
+            )
+        elif CSS_MARKER in content:
+            content = content.replace(CSS_MARKER, CSS_MARKER + CSS_ADDITION, 1)
+        changed = True
+
+    if MIDDLE_EXPORT_RE.search(content):
+        content = MIDDLE_EXPORT_RE.sub(r"\n\1", content, count=1)
+        changed = True
+
+    if 'class="sidebar-footer"' not in content:
         content = content.replace(
-            "  .export-btn:disabled { opacity: 0.5; cursor: default; }",
-            "  .export-btn:disabled { opacity: 0.5; cursor: default; }"
-            + CORPUS_NOTICE_CSS,
+            '    <div class="journal-list" id="journalList"></div>\n  </div>',
+            '    <div class="journal-list" id="journalList"></div>' + SIDEBAR_FOOTER + "\n  </div>",
             1,
         )
         changed = True
 
-    if 'id="corpusNotice"' not in content or "Export Report</button>" in content:
-        if OLD_EXPORT_BLOCK_RE.search(content):
-            content = OLD_EXPORT_BLOCK_RE.sub(NEW_EXPORT_BLOCK, content, count=1)
-            changed = True
-        elif 'onclick="generatePPTX()"' in content:
-            content = content.replace(
-                '    <div class="sidebar-section">\n'
-                '      <button class="export-btn" id="exportBtn" onclick="generatePPTX()">'
-                '&#9654; Export Report</button>\n'
-                "    </div>",
-                NEW_EXPORT_BLOCK,
-                1,
-            )
-            changed = True
+    if 'id="compareSelect" onchange="onCompareChange()"></select>' in content:
+        content = content.replace(
+            'id="compareSelect" onchange="onCompareChange()"></select>',
+            'id="compareSelect" onchange="onCompareChange()">'
+            '<option value="all">All journals</option></select>',
+            1,
+        )
+        changed = True
 
     if "function clientExportNotice()" not in content:
-        if "function showExportBtn()" in content:
-            content = re.sub(
-                r"function showExportBtn\(\) \{.*?\n\}",
-                CLIENT_EXPORT_NOTICE_JS,
-                content,
-                count=1,
-                flags=re.DOTALL,
-            )
-            changed = True
+        content = re.sub(
+            r"function showExportBtn\(\) \{.*?\n\}",
+            CLIENT_EXPORT_NOTICE_JS,
+            content,
+            count=1,
+            flags=re.DOTALL,
+        )
+        changed = True
+
+    if "function earlySidebarBoot()" not in content and "const JOURNAL_COUNT_LABEL" in content:
+        content = content.replace(
+            "const JOURNAL_COUNT_LABEL = Object.keys(DATA.j).length.toLocaleString();",
+            "const JOURNAL_COUNT_LABEL = Object.keys(DATA.j).length.toLocaleString();"
+            + EARLY_BOOT,
+            1,
+        )
+        changed = True
 
     if changed:
         HTML.write_text(content, encoding="utf-8")
-        print("Patched OA corpus disclaimer and client-only export notice")
+        print("Patched sidebar layout, OA disclaimer footer, and early boot")
     else:
-        print("OA disclaimer patch already applied")
+        print("Sidebar OA patch already applied")
     return 0
 
 
