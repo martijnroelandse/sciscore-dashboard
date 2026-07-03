@@ -534,12 +534,12 @@
 </head>
 <body>
 <script>
-(function earlyShellBoot() {
+document.addEventListener('DOMContentLoaded', function earlyShellBoot() {
   var compare = document.getElementById('compareSelect');
   if (compare) compare.innerHTML = '<option value="all">All journals</option>';
   var count = document.getElementById('journalCountLabel');
   if (count) count.textContent = 'Loading journal data…';
-})();
+});
 </script>
 
 <header>
@@ -1142,6 +1142,7 @@ function computeDataLabels() {
     : '';
   JOURNAL_COUNT_LABEL = Object.keys(DATA.j).length.toLocaleString();
   ALL_JOURNALS = Object.keys(DATA.j);
+  GROUPS = buildGroupIndex();
 }
 
 function earlySidebarBoot() {
@@ -1382,7 +1383,7 @@ function buildGroupIndex() {
   return g;
 }
 
-const GROUPS = buildGroupIndex();
+let GROUPS = {};
 
 const groupSelect = document.getElementById('groupSelect');
 const pubSelect = document.getElementById('publisherSelect');
@@ -2651,9 +2652,7 @@ function exportScope() {
 
 function clientExportNotice() {
   alert(
-    'Export (CSV and PowerPoint) is available to SciScore client organizations after sign-in.
-
-' +
+    'Export (CSV and PowerPoint) is available to SciScore client organizations after sign-in.\n\n' +
     'Contact SciScore at sciscore.com to request access. AACR full-corpus metrics coming soon.'
   );
 }
