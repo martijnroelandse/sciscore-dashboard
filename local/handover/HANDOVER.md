@@ -6,7 +6,7 @@ https://martijnroelandse.github.io/sciscore-dashboard/SciScore_journal_dashboard
 
 Deployed via GitHub Pages from `main` on the **public artifact repo** (`martijnroelandse/sciscore-dashboard`). Source code and raw data live in the private source repo — see [docs/REPO_SPLIT_MIGRATION.md](docs/REPO_SPLIT_MIGRATION.md).
 
-**→ New agent? Start with [local/handover/AGENT_HANDOVER.md](local/handover/AGENT_HANDOVER.md)** (repo state, open issues, P0–P2 tasks). All handover docs: [local/](local/).
+**→ New agent? Start with [docs/AGENT_HANDOVER.md](docs/AGENT_HANDOVER.md)** (repo state, open issues, P0–P2 tasks).
 
 ## Public vs private repositories
 
