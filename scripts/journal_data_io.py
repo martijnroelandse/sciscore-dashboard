@@ -17,6 +17,27 @@ DEFAULT_CSV = ROOT / "data" / "2026_sciscore_v3.csv"
 DEFAULT_XLSX = ROOT / "data" / "2026_sciscore_v3.xlsx"
 EXT_LIST_GLOB = ("ext_list*.csv", "*ext_list*.csv", "*May_2026*.csv")
 
+# Journals published by Cell Press but listed under Elsevier B.V./Ltd in Scopus.
+CELL_PRESS_EXTRA_JOURNALS = frozenset({
+    "Cell",
+    "Cell Reports",
+    "Cell Chemical Biology",
+    "Cell Host & Microbe",
+    "Cell Host and Microbe",
+    "Heliyon",
+    "iScience",
+    "Chem",
+    "Chem Catalysis",
+    "Device",
+    "Innovation",
+    "Joule",
+    "Matter",
+    "Med",
+    "Newton",
+    "Nexus",
+    "One Earth",
+})
+
 EMBEDDED_KEYS = {
     "n", "r", "sex", "pwr", "rand", "blind", "irb", "iacuc",
     "ab", "org", "cl", "tool", "abn", "orgn", "cln", "tooln",
@@ -90,6 +111,30 @@ def load_publisher_map() -> dict[str, str]:
             if publisher:
                 mapping[title] = publisher
     return mapping
+
+
+def load_cell_press_journals() -> frozenset[str]:
+    """Return Cell Press journal titles from ext_list plus known flagship titles."""
+    titles: set[str] = set(CELL_PRESS_EXTRA_JOURNALS)
+    path = find_ext_list_csv()
+    if path:
+        with path.open(newline="", encoding="utf-8-sig") as handle:
+            for row in csv.reader(handle):
+                if len(row) > 18 and row[18].strip() == "Cell Press" and row[1].strip():
+                    titles.add(row[1].strip())
+    return frozenset(titles)
+
+
+def is_cell_press_journal(name: str, cell_press: frozenset[str]) -> bool:
+    return name.lower() in {title.lower() for title in cell_press}
+
+
+def is_lancet_journal(name: str) -> bool:
+    if name.startswith("The Lancet"):
+        return True
+    if name.startswith("Lancet Regional Health") or name.startswith("Lancet."):
+        return True
+    return name in {"Lancet", "Lancet (London, England)"}
 
 
 def canonicalize_journal_name(name: str, publishers: dict[str, str]) -> str:
