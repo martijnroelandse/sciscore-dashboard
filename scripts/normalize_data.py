@@ -18,10 +18,13 @@ CLIENT_ORGS_PATH = ROOT / "scripts" / "client_orgs.json"
 
 SN_GROUP = "Springer Nature"
 SN_SUB_BRANDS = ("BMC", "Nature Portfolio", "EMBO", "Springer Nature")
+EL_GROUP = "Elsevier"
+EL_SUB_BRANDS = ("Cell Press", "The Lancet", "Elsevier")
 PLOS_PUBLISHER = "Public Library of Science"
 
 
 from html_json import extract_json_block, replace_const_block as replace_json_block
+from journal_data_io import is_cell_press_journal, is_lancet_journal, load_cell_press_journals
 
 
 def total_papers(journal: dict) -> int:
@@ -100,6 +103,30 @@ def sn_sub_brand(journal_name: str) -> str:
     if journal_name.startswith("Nature ") or journal_name == "Nature":
         return "Nature Portfolio"
     return "Springer Nature"
+
+
+def elsevier_sub_brand(journal_name: str, cell_press: frozenset[str]) -> str:
+    if is_cell_press_journal(journal_name, cell_press):
+        return "Cell Press"
+    if is_lancet_journal(journal_name):
+        return "The Lancet"
+    return EL_GROUP
+
+
+def apply_elsevier_sub_brands(journals: dict, cell_press: frozenset[str]) -> int:
+    changed = 0
+    for journal, entry in journals.items():
+        brand = elsevier_sub_brand(journal, cell_press)
+        pub = entry.get("pub") or ""
+        if brand in {"Cell Press", "The Lancet"}:
+            if pub not in ("", EL_GROUP):
+                continue
+        elif pub != EL_GROUP:
+            continue
+        if entry.get("pub") != brand:
+            entry["pub"] = brand
+            changed += 1
+    return changed
 
 
 def apply_sn_sub_brands(journals: dict) -> int:
@@ -201,6 +228,10 @@ def update_group_map(group_map: dict, publishers: list[str]) -> dict:
     if "Springer Nature Korea" in publishers:
         updated["Springer Nature Korea"] = SN_GROUP
 
+    for brand in EL_SUB_BRANDS:
+        if brand in publishers:
+            updated[brand] = EL_GROUP
+
     return updated
 
 
@@ -219,6 +250,7 @@ def main() -> None:
     group_map = json.loads(GROUP_MAP_PATH.read_text(encoding="utf-8"))
 
     client_cfg = json.loads(CLIENT_ORGS_PATH.read_text(encoding="utf-8"))
+    cell_press = load_cell_press_journals()
     journals_before = len(data["j"])
     journals, renamed = dedupe_journals(data["j"])
     plos_renames = rename_plos_journals(journals)
@@ -226,6 +258,7 @@ def main() -> None:
     plos_updates = apply_plos_publisher_overrides(journals)
     override_updates, missing_overrides = apply_client_publisher_overrides(journals, client_cfg)
     sn_split = apply_sn_sub_brands(journals)
+    el_split = apply_elsevier_sub_brands(journals, cell_press)
     publishers = rebuild_publishers(journals)
     group_map = update_group_map(group_map, list(publishers.keys()))
 
@@ -248,6 +281,7 @@ def main() -> None:
     )
 
     sn_pubs = [p for p in publishers if p in SN_SUB_BRANDS or p == "Springer Nature Korea"]
+    el_pubs = [p for p in publishers if p in EL_SUB_BRANDS]
     print(f"Journals: {journals_before} -> {len(journals)} ({len(renamed)} merged)")
     print(f"PLOS journal renames: {plos_rename_count}")
     print(f"PLOS publisher overrides applied: {plos_updates}")
@@ -255,7 +289,9 @@ def main() -> None:
     for org, names in sorted(missing_overrides.items()):
         print(f"  {org}: {len(names)} configured journal(s) not in DATA")
     print(f"Springer Nature sub-brand reassignment: {sn_split} journals")
+    print(f"Elsevier sub-brand reassignment: {el_split} journals")
     print(f"SN group publishers: {', '.join(f'{p} ({len(publishers[p])})' for p in sorted(sn_pubs))}")
+    print(f"Elsevier group publishers: {', '.join(f'{p} ({len(publishers[p])})' for p in sorted(el_pubs))}")
     blood = [n for n in journals if n.lower() == "blood research"]
     print(f"Blood Research entries: {blood}")
 
