@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Client login — SciScore Journal Intelligence</title>
+  <title>Client access — SciScore Journal Intelligence</title>
   <style>
     :root {
       --navy: #0b1c3d;
@@ -25,66 +25,73 @@
       padding: 24px;
     }
     .card {
-      width: min(560px, 100%);
+      width: min(520px, 100%);
       border: 1px solid var(--border);
       border-radius: 12px;
       background: rgba(0,0,0,0.22);
-      padding: 24px 22px;
+      padding: 28px 24px;
     }
-    h1 { margin: 0 0 8px; font-size: 1.35rem; }
-    p { color: var(--muted); line-height: 1.5; }
-    code {
-      background: rgba(41,171,226,0.12);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      color: #bfe9fb;
-      font-size: 0.9em;
+    .brand {
+      margin: 0 0 4px;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--blue);
+      font-weight: 600;
     }
-    .steps { margin: 16px 0 0; padding-left: 18px; color: var(--muted); }
-    .steps li { margin: 8px 0; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    h1 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 700; }
+    p { color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
+    ul {
+      margin: 0 0 18px;
+      padding-left: 1.15rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    li { margin: 6px 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
     a.btn {
       display: inline-block;
       text-decoration: none;
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 11px 16px;
       font-weight: 600;
       font-size: 0.9rem;
     }
     a.primary { background: var(--blue); color: var(--navy); }
     a.secondary { border: 1px solid var(--border); color: var(--text); }
     .note {
-      margin-top: 16px;
-      font-size: 0.82rem;
+      margin-top: 18px;
+      font-size: 0.8rem;
       color: var(--muted);
       border-top: 1px solid var(--border);
-      padding-top: 12px;
+      padding-top: 14px;
+      line-height: 1.45;
     }
   </style>
 </head>
 <body>
   <main class="card">
-    <h1>Client login</h1>
+    <p class="brand">SciScore Journal Intelligence</p>
+    <h1>Client access</h1>
     <p>
-      Client email/password login and CSV download run on the private local API for now
-      (not on sciscore.com). After sign-in, clients can download their org-scoped CSV;
-      non-OA content will unlock in the same place once ingested.
+      This public page shows <strong style="color:var(--text);font-weight:600">open-access metrics only</strong>
+      (PubMed Central subset).
     </p>
-    <ol class="steps">
-      <li>Add a user in the private repo:
-        <br><code>python3 scripts/manage_client_users.py add --email you@org.org --org-id AACR</code></li>
-      <li>Start the API:
-        <br><code>python3 scripts/client_api_server.py</code></li>
-      <li>Open the login + download page:
-        <br><code>http://127.0.0.1:8787/clients/login</code></li>
-    </ol>
+    <p>Publisher clients can also get:</p>
+    <ul>
+      <li>Full-corpus journal metrics</li>
+      <li>Organization-scoped CSV download</li>
+    </ul>
+    <p>
+      Online sign-in for those features is not available on this public demo yet.
+      If your organization is a SciScore client, ask your SciScore contact for access.
+    </p>
     <div class="actions">
-      <a class="btn primary" href="http://127.0.0.1:8787/clients/login">Open local login</a>
+      <a class="btn primary" href="https://www.sciscore.com/" target="_blank" rel="noopener">Visit SciScore</a>
       <a class="btn secondary" href="../SciScore_journal_dashboard.html">Back to dashboard</a>
     </div>
     <p class="note">
-      Public GitHub Pages stays OA-only. Authenticated download requires the local API session.
+      Already exploring the open-access dashboard? You can keep using it without an account.
     </p>
   </main>
 </body>
