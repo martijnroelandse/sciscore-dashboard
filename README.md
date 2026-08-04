@@ -31,4 +31,3 @@ The open-access subset underrepresents journals with restrictive access policies
 ---
 
 *Published from the private source repo via `scripts/publish_oa_artifact.py`.*
-Last verified: 2026-08-04 07:40 UTC
