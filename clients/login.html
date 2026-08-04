@@ -30,7 +30,6 @@
       border-radius: 12px;
       background: rgba(0,0,0,0.22);
       padding: 24px 22px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.28);
     }
     h1 { margin: 0 0 8px; font-size: 1.35rem; }
     p { color: var(--muted); line-height: 1.5; }
@@ -53,15 +52,8 @@
       font-weight: 600;
       font-size: 0.9rem;
     }
-    a.primary {
-      background: var(--blue);
-      color: var(--navy);
-    }
-    a.secondary {
-      border: 1px solid var(--border);
-      color: var(--text);
-      background: transparent;
-    }
+    a.primary { background: var(--blue); color: var(--navy); }
+    a.secondary { border: 1px solid var(--border); color: var(--text); }
     .note {
       margin-top: 16px;
       font-size: 0.82rem;
@@ -75,24 +67,24 @@
   <main class="card">
     <h1>Client login</h1>
     <p>
-      Temporary Phase&nbsp;2 client access lives with this GitHub-hosted dashboard flow.
-      There is <strong>no client login on sciscore.com</strong> yet.
+      Client email/password login and CSV download run on the private local API for now
+      (not on sciscore.com). After sign-in, clients can download their org-scoped CSV;
+      non-OA content will unlock in the same place once ingested.
     </p>
     <ol class="steps">
-      <li>In the private repo, start the local API:
+      <li>Add a user in the private repo:
+        <br><code>python3 scripts/manage_client_users.py add --email you@org.org --org-id AACR</code></li>
+      <li>Start the API:
         <br><code>python3 scripts/client_api_server.py</code></li>
-      <li>Open the interactive login UI at
+      <li>Open the login + download page:
         <br><code>http://127.0.0.1:8787/clients/login</code></li>
-      <li>Sign in with your passcode from
-        <code>auth_config.json</code> (private local config).</li>
     </ol>
     <div class="actions">
       <a class="btn primary" href="http://127.0.0.1:8787/clients/login">Open local login</a>
-      <a class="btn secondary" href="SciScore_journal_dashboard.html">Back to dashboard</a>
+      <a class="btn secondary" href="../SciScore_journal_dashboard.html">Back to dashboard</a>
     </div>
     <p class="note">
-      Public Pages remains OA-only. Authenticated metrics/export use private client CSV
-      ingest + the local API. ORCID / sciscore.com portal comes later.
+      Public GitHub Pages stays OA-only. Authenticated download requires the local API session.
     </p>
   </main>
 </body>

@@ -2652,9 +2652,15 @@ function exportScope() {
 }
 
 function clientExportNotice() {
+  // Prefer local authenticated download when the client API is running.
+  const host = window.location.hostname;
+  if (host === '127.0.0.1' || host === 'localhost') {
+    window.open('http://127.0.0.1:8787/clients/login', '_blank', 'noopener');
+    return;
+  }
   alert(
-    'Export (CSV and PowerPoint) is available to SciScore client organizations after sign-in.\n\n' +
-    'Contact SciScore at sciscore.com to request access. AACR full-corpus metrics coming soon.'
+    'Export (CSV and PowerPoint) is available after client sign-in.\n\n' +
+    'Open Client login to continue. Authenticated download runs via the local client API for now.'
   );
 }
 
