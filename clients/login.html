@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Client access — SciScore Journal Intelligence</title>
+  <title>Client sign-in — SciScore Journal Intelligence</title>
+  <meta http-equiv="refresh" content="0;url=https://sciscore-client-login.fly.dev/clients/login">
   <style>
     :root {
       --navy: #0b1c3d;
@@ -25,30 +26,15 @@
       padding: 24px;
     }
     .card {
-      width: min(520px, 100%);
+      width: min(480px, 100%);
       border: 1px solid var(--border);
       border-radius: 12px;
       background: rgba(0,0,0,0.22);
       padding: 28px 24px;
+      text-align: center;
     }
-    .brand {
-      margin: 0 0 4px;
-      font-size: 0.78rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--blue);
-      font-weight: 600;
-    }
-    h1 { margin: 0 0 12px; font-size: 1.4rem; font-weight: 700; }
-    p { color: var(--muted); line-height: 1.55; margin: 0 0 12px; }
-    ul {
-      margin: 0 0 18px;
-      padding-left: 1.15rem;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-    li { margin: 6px 0; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+    h1 { margin: 0 0 10px; font-size: 1.35rem; }
+    p { color: var(--muted); line-height: 1.55; margin: 0 0 18px; }
     a.btn {
       display: inline-block;
       text-decoration: none;
@@ -56,43 +42,27 @@
       padding: 11px 16px;
       font-weight: 600;
       font-size: 0.9rem;
+      background: var(--blue);
+      color: var(--navy);
     }
-    a.primary { background: var(--blue); color: var(--navy); }
-    a.secondary { border: 1px solid var(--border); color: var(--text); }
-    .note {
-      margin-top: 18px;
-      font-size: 0.8rem;
+    a.secondary {
+      display: inline-block;
+      margin-top: 12px;
       color: var(--muted);
-      border-top: 1px solid var(--border);
-      padding-top: 14px;
-      line-height: 1.45;
+      font-size: 0.85rem;
     }
   </style>
 </head>
 <body>
   <main class="card">
-    <p class="brand">SciScore Journal Intelligence</p>
-    <h1>Client access</h1>
+    <h1>Continue to client sign-in</h1>
     <p>
-      This public page shows <strong style="color:var(--text);font-weight:600">open-access metrics only</strong>
-      (PubMed Central subset).
+      Publisher clients sign in on the SciScore client portal to download
+      organization-scoped metrics CSV.
     </p>
-    <p>Publisher clients can also get:</p>
-    <ul>
-      <li>Full-corpus journal metrics</li>
-      <li>Organization-scoped CSV download</li>
-    </ul>
-    <p>
-      Online sign-in for those features is not available on this public demo yet.
-      If your organization is a SciScore client, ask your SciScore contact for access.
-    </p>
-    <div class="actions">
-      <a class="btn primary" href="https://www.sciscore.com/" target="_blank" rel="noopener">Visit SciScore</a>
-      <a class="btn secondary" href="../SciScore_journal_dashboard.html">Back to dashboard</a>
-    </div>
-    <p class="note">
-      Already exploring the open-access dashboard? You can keep using it without an account.
-    </p>
+    <a class="btn" href="https://sciscore-client-login.fly.dev/clients/login">Go to sign-in</a>
+    <br>
+    <a class="secondary" href="../SciScore_journal_dashboard.html">Back to open-access dashboard</a>
   </main>
 </body>
 </html>
