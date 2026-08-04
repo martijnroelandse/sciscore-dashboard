@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client login — SciScore Journal Intelligence</title>
+  <style>
+    :root {
+      --navy: #0b1c3d;
+      --blue: #29abe2;
+      --text: #e8eef8;
+      --muted: #9bb0cc;
+      --border: rgba(41,171,226,0.28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #14305f 0%, var(--navy) 55%);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(560px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.22);
+      padding: 24px 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+    }
+    h1 { margin: 0 0 8px; font-size: 1.35rem; }
+    p { color: var(--muted); line-height: 1.5; }
+    code {
+      background: rgba(41,171,226,0.12);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #bfe9fb;
+      font-size: 0.9em;
+    }
+    .steps { margin: 16px 0 0; padding-left: 18px; color: var(--muted); }
+    .steps li { margin: 8px 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    a.btn {
+      display: inline-block;
+      text-decoration: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    a.primary {
+      background: var(--blue);
+      color: var(--navy);
+    }
+    a.secondary {
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: transparent;
+    }
+    .note {
+      margin-top: 16px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Client login</h1>
+    <p>
+      Temporary Phase&nbsp;2 client access lives with this GitHub-hosted dashboard flow.
+      There is <strong>no client login on sciscore.com</strong> yet.
+    </p>
+    <ol class="steps">
+      <li>In the private repo, start the local API:
+        <br><code>python3 scripts/client_api_server.py</code></li>
+      <li>Open the interactive login UI at
+        <br><code>http://127.0.0.1:8787/clients/login</code></li>
+      <li>Sign in with your passcode from
+        <code>auth_config.json</code> (private local config).</li>
+    </ol>
+    <div class="actions">
+      <a class="btn primary" href="http://127.0.0.1:8787/clients/login">Open local login</a>
+      <a class="btn secondary" href="SciScore_journal_dashboard.html">Back to dashboard</a>
+    </div>
+    <p class="note">
+      Public Pages remains OA-only. Authenticated metrics/export use private client CSV
+      ingest + the local API. ORCID / sciscore.com portal comes later.
+    </p>
+  </main>
+</body>
+</html>
