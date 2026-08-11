@@ -380,6 +380,20 @@
     cursor: pointer;
   }
   .export-btn.client-only:hover { opacity: 0.9; background: rgba(41,171,226,0.32); }
+    .client-access-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: transparent;
+    color: var(--blue-light);
+    border: 1px solid rgba(41,171,226,0.35);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .client-access-btn:hover { background: rgba(41,171,226,0.12); }
   #compareSelect { min-height: 2rem; }
 
 
@@ -2657,9 +2671,9 @@ function showExportBtn() {
   const btn = document.getElementById('exportBtn');
   if (!btn) return;
   btn.classList.add('visible', 'client-only');
-  btn.textContent = 'Client access';
-  btn.title = 'Sign in for org-scoped CSV export';
-  btn.onclick = openClientLogin;
+  btn.textContent = '▶ Export PPT deck';
+  btn.title = 'Download a PowerPoint deck for the current scope';
+  btn.onclick = generatePPTX;
 }
 
 groupSelect.addEventListener('change', () => {
