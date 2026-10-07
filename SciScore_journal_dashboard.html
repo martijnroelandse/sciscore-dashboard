@@ -527,6 +527,12 @@
   .journal-table tr:hover td { background: var(--blue-dim); }
   .journal-table .rti-cell { font-weight: 700; color: var(--blue-light); }
   .journal-table .num-cell { color: var(--muted); text-align: right; }
+
+  .coverage-note { margin: 14px 0; padding: 14px 18px; border: 1px solid #40536b; border-radius: 10px; background: #152440; color: #cbd7e7; font-size: 13px; line-height: 1.6; }
+  .coverage-note strong { color: #f0c879; }
+  .year-check { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: #b9cbe0; font-size: 13px; }
+  .year-check select { padding: 6px 10px; border: 1px solid #40536b; border-radius: 6px; background: #152440; color: white; }
+
 </style>
 </head>
 <body>
@@ -578,11 +584,14 @@ document.addEventListener('DOMContentLoaded', function earlyShellBoot() {
     </div>
     <div class="journal-list" id="journalList"></div>
     <div class="sidebar-footer">
-                                    <div class="corpus-notice" id="corpusNotice">
+                                                <div class="corpus-notice" id="corpusNotice">
         <strong>Open-access corpus.</strong>
-        Metrics use the PubMed Central open-access subset only.
-        <a href="addendum.html#limitations">Limitations</a>.
-        Full-corpus metrics, CSV export, and PPT decks require client sign-in.
+        Scored PMC open-access papers, not total journal output.
+        <details style="margin-top:8px"><summary style="cursor:pointer">About coverage</summary>
+          <p>Results describe the machine-readable papers scored in the PMC open-access subset. Changes in counts may reflect coverage or article mix. Full-year completeness has not been independently verified.</p>
+          <p>Dataset: SciScore v3. <a href="addendum.html#limitations">Methods &amp; limitations</a>.</p>
+        </details>
+        <p style="margin:8px 0 0">Client sign-in provides CSV and PPT downloads and available full-corpus metrics.</p>
       </div>
       <button class="client-access-btn" id="clientAccessBtn" type="button" onclick="openClientLogin()" title="Sign in for org-scoped CSV and PPT export">Client access</button>
     </div>
@@ -1425,7 +1434,7 @@ async function loadRridPanel() {
   }
 }
 
-const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+const pct = v => v == null ? '—' : v === 0 ? '0%' : (v > 0 && v * 100 < 0.05) ? '<0.1%' : (v * 100).toFixed(1) + '%';
 const fmt = v => v == null ? '—' : v.toFixed(2);
 const DENSITY_KEYS = new Set(['data_id', 'code_id']);
 
@@ -2053,7 +2062,7 @@ function renderMetricCards(yd, year, prevYd, prevYear, getYdForYear, bench) {
       : '';
     const countLine = card.countKey && yd[card.countKey] != null
       ? `${yd[card.countKey].toLocaleString()} detected`
-      : (yd.n != null ? `${yd.n.toLocaleString()} papers` : '');
+      : (yd.n != null ? `${yd.n.toLocaleString()} scored papers` : '');
     return `<div class="metric-card">
       <div class="metric-card-label">${card.label}</div>
       <div class="metric-card-value">${pct(val)}</div>
@@ -2069,6 +2078,11 @@ function renderMetricCards(yd, year, prevYd, prevYear, getYdForYear, bench) {
     <div class="metric-cards-heading">Key reporting metrics · ${year}${prevYear ? ` (vs ${prevYear})` : ''}</div>
     <div class="metric-cards-grid">${cards}</div>
   </div>`;
+}
+
+function journalYearCheck(jdata) {
+  const covered = Object.keys(jdata.y || {}).filter(y => jdata.y[y]?.n > 0).sort((a,b) => Number(a)-Number(b));
+  return `<div class="year-check"><label for="coverageYear">Check a year</label><select id="coverageYear" onchange="selectYear(this.value)">${YEARS.map(y => `<option value="${y}"${y === selectedYear ? ' selected' : ''}>${y}${jdata.y[y]?.n > 0 ? '' : ' — no data'}</option>`).join('')}</select><span>Scored coverage: ${covered.length ? covered[0] + '–' + covered[covered.length-1] : 'none'}. Missing years are not zero scores.</span></div>`;
 }
 
 function buildInsightSummary(yd, prevYd, year, prevYear) {
@@ -2101,7 +2115,7 @@ function buildInsightSummary(yd, prevYd, year, prevYear) {
     const sampleNote = nDeltaPct > 0
       ? 'score may reflect a broader sample'
       : 'score may reflect a smaller sample';
-    volumeLine = `Paper volume ${sign}${nDeltaPct.toFixed(0)}% (${prevYd.n.toLocaleString()} → ${yd.n.toLocaleString()}) — ${sampleNote}.`;
+    volumeLine = `Scored sample ${sign}${nDeltaPct.toFixed(0)}% (${prevYd.n.toLocaleString()} → ${yd.n.toLocaleString()} papers) — ${sampleNote}. This aggregate cannot distinguish a change in reporting practice from a change in coverage or article mix.`;
   }
 
   return { bannerClass, rtiDelta, topMovers, volumeLine, year, prevYear };
@@ -2212,7 +2226,7 @@ function radarDatasets(year, vals, label) {
   }];
   if (compare) {
     const compareVals = ['sex','pwr','rand','blind','irb','iacuc']
-      .map(k => compare[k] != null ? Math.round(compare[k] * 100) : 0);
+      .map(k => compare[k] != null ? Math.round(compare[k] * 100) : null);
     datasets.push({
       label: `${compareName} avg`,
       data: compareVals,
@@ -2278,7 +2292,7 @@ function backToPublisher() {
 
 function selectYear(y) {
   selectedYear = y;
-  if (selectedJournal) renderYearContent();
+  if (selectedJournal) renderMain();
   else renderPublisherYearContent();
 }
 
@@ -2456,7 +2470,7 @@ function renderPublisherYearContent() {
       </div>
       <div class="hero-rti-meta">
         <div class="hero-rti-label">Portfolio Rigor &amp; Transparency Index</div>
-        <div class="hero-rti-title">${selectedYear} · ${yd.n.toLocaleString()} papers across ${yd.journalCount.toLocaleString()} journals</div>
+        <div class="hero-rti-title">${selectedYear} · ${yd.n.toLocaleString()} scored PMC open-access papers across ${yd.journalCount.toLocaleString()} journals</div>
         <div class="hero-rti-sub">Paper-weighted average — click a journal below to drill down</div>
         ${renderBenchStrip(yd, selectedYear)}
       </div>
@@ -2473,7 +2487,7 @@ function renderPublisherYearContent() {
   if (charts.radar) charts.radar.destroy();
   const radarLabels = ['Sex of subjects', 'Power analysis', 'Randomization', 'Blinding', 'IRB / Ethics', 'IACUC'];
   const radarVals = [yd.sex, yd.pwr, yd.rand, yd.blind, yd.irb, yd.iacuc]
-    .map(v => v != null ? Math.round(v * 100) : 0);
+    .map(v => v != null ? Math.round(v * 100) : null);
   charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
     type: 'radar',
     data: {
@@ -2535,6 +2549,10 @@ function renderDashboard() {
   const years = YEARS.filter(y => jdata.y[y]);
   const scope = publisherScope();
   const main = document.getElementById('main');
+  if (!jdata.y[selectedYear] || !(jdata.y[selectedYear].n > 0)) {
+    main.innerHTML = `<div class="journal-header"><div class="journal-title">${escAttr(selectedJournal)}</div></div>${journalYearCheck(jdata)}<div class="coverage-note"><strong>No scored data for ${escAttr(selectedYear || 'this year')}.</strong> No RTI can be quoted for this selection. This is missing coverage, not a zero score, and does not establish whether the journal existed in that year.</div>`;
+    return;
+  }
 
   main.innerHTML = `
     ${scope ? `<div class="breadcrumb"><button type="button" class="breadcrumb-btn" onclick="backToPublisher()">← ${scope.label} overview</button></div>` : ''}
@@ -2543,6 +2561,7 @@ function renderDashboard() {
       <div class="journal-publisher">${jdata.pub || '<span style="opacity:0.5">Publisher not matched (Scopus)</span>'}${jdata.pub ? ' · ' + getPublisherGroup(jdata.pub) : ''}${Array.isArray(jdata.pub_also) && jdata.pub_also.length ? ' · also ' + jdata.pub_also.map(p => esc(p)).join(', ') : ''}</div>
     </div>
 
+    ${journalYearCheck(jdata)}
     <div class="year-tabs" id="yearTabs">
       ${years.map(y => `<button class="year-tab${y===selectedYear?' active':''}" onclick="selectYear('${y}')">${y}</button>`).join('')}
     </div>
@@ -2646,8 +2665,8 @@ function renderYearContent() {
       </div>
       <div class="hero-rti-meta">
         <div class="hero-rti-label">Rigor &amp; Transparency Index</div>
-        <div class="hero-rti-title">${selectedYear} · ${yd.n != null ? yd.n.toLocaleString() + ' papers analysed' : 'No papers'}</div>
-        <div class="hero-rti-sub">Primary SciScore metric for editorial and sales conversations</div>
+        <div class="hero-rti-title">${selectedYear} · ${yd.n != null ? yd.n.toLocaleString() + ' scored PMC open-access papers' : 'No scored data'}</div>
+        <div class="hero-rti-sub">RTI describes reporting in the covered sample, not research quality or the whole journal</div>
         ${renderBenchStrip(yd, selectedYear)}
       </div>
     </div>
@@ -2665,7 +2684,7 @@ function renderYearContent() {
   if (charts.radar) { charts.radar.destroy(); }
   const radarLabels = ['Sex of subjects', 'Power analysis', 'Randomization', 'Blinding', 'IRB / Ethics', 'IACUC'];
   const radarVals = [yd.sex, yd.pwr, yd.rand, yd.blind, yd.irb, yd.iacuc]
-    .map(v => v != null ? Math.round(v * 100) : 0);
+    .map(v => v != null ? Math.round(v * 100) : null);
   charts.radar = new Chart(document.getElementById('radarChart').getContext('2d'), {
     type: 'radar',
     data: {
@@ -3038,13 +3057,16 @@ function setupPptxBranding(pptx) {
 }
 
 function pptxFooterBranding(sl, theme, opts = {}) {
-  const { H, face, footerTextX, FOOTER_Y } = theme;
+  const { W, H, face, footerTextX, FOOTER_Y } = theme;
   const onDark = !!opts.onDark;
   const x = onDark ? 1 : (footerTextX ?? 0.85);
   const y = onDark ? H - 0.55 : (FOOTER_Y || H - 0.36) + 0.08;
   const fontSize = 9;
   const color = onDark ? 'A8C8E0' : '999999';
 
+  const fullCorpus = Object.values(DATA.j || {}).some(j => Object.values(j.y || {}).some(row => row.corpus === 'full'));
+  const coverageLabel = fullCorpus ? 'Scored client corpus' : 'Scored PMC open-access subset';
+  sl.addText(`${coverageLabel} · counts are the scored sample, not total journal output`, { x: 0.35, y: H - (onDark ? 0.85 : 0.62), w: W - 0.7, h: 0.18, fontSize: 7, color: onDark ? 'A8C8E0' : '777777', fontFace: face });
   sl.addText([
     { text: 'sciscore.com', options: { fontSize, color, fontFace: face, hyperlink: { url: PPTX_SITE_URL } } },
     { text: '  ·  ', options: { fontSize, color, fontFace: face } },
@@ -3345,7 +3367,7 @@ function pptxAddOverviewSlides(pptx, scopeLabel, journals, theme) {
   if (!yd) return;
 
   const sl = pptx.addSlide({ masterName: 'SCISCORE_CONTENT' });
-  pptxSlideHeader(sl, pptx, `${scopeLabel} — Portfolio Overview`, `${latestYear} · ${yd.n.toLocaleString()} papers · ${yd.journalCount.toLocaleString()} journals`, yd.r != null ? yd.r.toFixed(1) : null, theme);
+  pptxSlideHeader(sl, pptx, `${scopeLabel} — Portfolio Overview`, `${latestYear} · ${yd.n.toLocaleString()} scored papers · ${yd.journalCount.toLocaleString()} journals`, yd.r != null ? yd.r.toFixed(1) : null, theme);
 
   sl.addShape(pptx.ShapeType.rect, { x:0.35, y:BODY_TOP, w:3.2, h:1.0, fill:{color:'F0F7FB'}, line:{color:BLUE, width:1} });
   sl.addText('PORTFOLIO RTI', { x:0.5, y:BODY_TOP + 0.07, w:3, h:0.22, fontSize:8, bold:true, color:BLUE, fontFace:theme.face, charSpacing:1.2 });
@@ -3482,7 +3504,7 @@ function pptxAddJournalDetailSlide(pptx, jname, scopeLabel, yr, yd, theme) {
   const sl = pptx.addSlide({ masterName: 'SCISCORE_CONTENT' });
   const benchLine = pptxBenchmarkLine(yd, yr);
   const hasBenchmark = !!(benchLine || byYearBenchmark(yr) || clientOrgBenchmark(yr));
-  pptxSlideHeader(sl, pptx, jname, `${yd.n || 0} papers · ${yr}`, yd.r != null ? yd.r.toFixed(1) : null, theme, benchLine);
+  pptxSlideHeader(sl, pptx, jname, `${yd.n ?? 'No data'} scored papers · ${yr}`, yd.r != null ? yd.r.toFixed(1) : null, theme, benchLine);
   const jdata = DATA.j[jname];
   const prevYear = prevYearWithData(yr, y => jdata?.y?.[y]?.n);
   const prevYd = prevYear ? jdata.y[prevYear] : null;
