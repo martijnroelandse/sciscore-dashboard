@@ -2403,7 +2403,7 @@ function renderEmpty() {
   main.innerHTML = `<div class="journal-header comparison-guide"><div class="journal-title">Explore and compare journals</div><p class="guide-intro">Start with a journal or publisher in the sidebar, or open a comparison below.</p><div class="guide-paths">
       <div class="guide-path"><span class="guide-icon" aria-hidden="true">▤</span><div><h2>Explore a journal</h2><p>See its RTI, reporting practices and changes over time. Check the scored-paper count alongside each result.</p><span class="guide-action">Choose a journal in the sidebar</span></div></div>
       <div class="guide-path"><span class="guide-icon" aria-hidden="true">⇄</span><div><h2>Compare performance</h2><p>Rank journals by RTI with a minimum sample size, or compare paper-weighted publisher averages.</p><span class="guide-action">Open journal or publisher ranking</span></div></div>
-      <div class="guide-path"><span class="guide-icon" aria-hidden="true">↗</span><div><h2>Follow reporting trends</h2><p>See how data and code availability statements change across years, with the annual scored sample.</p><span class="guide-action">Open corpus reporting trends</span></div></div>
+      <div class="guide-path"><span class="guide-icon" aria-hidden="true">↗</span><div><h2>Follow reporting trends</h2><p>Follow average RTI across the corpus and SciScore client journals, alongside annual paper coverage.</p><span class="guide-action">Open corpus reporting trends</span></div></div>
     </div><p class="guide-footnote">All comparisons below describe scored PMC open-access papers. More coverage detail is available in the sidebar.<br>Full-corpus metrics available on request.</p></div>
     <div class="detail-panel comparison-panel collapsed" id="panelRanking"><button type="button" class="panel-toggle" aria-expanded="false" aria-controls="rankingBody" onclick="togglePanel('panelRanking')"><span class="panel-toggle-title">Journal ranking</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="rankingBody">
       <div class="comparison-filters">
@@ -2415,7 +2415,7 @@ function renderEmpty() {
       <label>Minimum scored papers <input id="publisherMinimum" type="number" min="1" value="${comparisonState.publisherMinimum}"></label>
       <label>RTI order <select id="publisherOrder"><option value="asc">Lowest first</option><option value="desc">Highest first</option></select></label>
       <label>Publisher name <input id="publisherQuery" type="search" placeholder="Find publishers"></label></div><p>RTI is weighted by scored papers: each journal's RTI × its paper count, divided by the total count. This is not an equal-weighted average of journals. Publishers are listed individually; sidebar publisher groups combine several publishers. Shared journals can appear under more than one publisher.</p><div id="publisherResults" class="comparison-table-scroll"></div></div></div>
-    <div class="detail-panel comparison-panel" id="panelCorpusTrends"><button type="button" class="panel-toggle" aria-expanded="true" aria-controls="corpusTrendsBody" onclick="togglePanel('panelCorpusTrends')"><span class="panel-toggle-title">Corpus reporting trends · data and code availability</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="corpusTrendsBody"><p>Percentages describe papers with a detected availability statement. The paper count is the scored sample for that year. Availability statements do not establish that data or code were shared.</p><div class="chart-wrap" style="height:280px"><canvas id="corpusReportingChart" aria-label="Data and code availability statements by publication year" role="img"></canvas></div><details style="margin-top:14px"><summary class="guide-action" style="cursor:pointer">View values</summary><table class="rrid-compare-table"><thead><tr><th>Year</th><th>Scored papers</th><th>Data availability</th><th>Code availability</th></tr></thead><tbody>${YEARS.filter(y => Number(y)>=2015).map(y => { const yd = byYearBenchmark(y); return `<tr><td>${y}</td><td>${yd?.n?.toLocaleString() ?? '—'}</td><td>${pct(yd?.data)}</td><td>${pct(yd?.code)}</td></tr>`; }).join('')}</tbody></table></details></div></div>`;
+    <div class="detail-panel comparison-panel" id="panelCorpusTrends"><button type="button" class="panel-toggle" aria-expanded="true" aria-controls="corpusTrendsBody" onclick="togglePanel('panelCorpusTrends')"><span class="panel-toggle-title">RTI across journals and publishers · score range: 1–10</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="corpusTrendsBody"><div class="chart-wrap" style="height:320px"><canvas id="corpusReportingChart" aria-label="RTI trends for all journals and SciScore clients, with annual scored-paper coverage" role="img"></canvas></div><p style="margin-top:14px;margin-bottom:0">Paper-weighted RTI among scored PMC open-access papers. The shaded band shows the RTI range across the ten publishers with the most scored papers in 2024; the same ten are used for every year. Bars show annual scored-paper counts for all journals on the right axis; hover for scores and sample sizes.</p></div></div>`;
   document.getElementById('rankingOrder').value = comparisonState.order;
   document.getElementById('rankingQuery').value = comparisonState.query;
   [['rankingYear','year'],['rankingOrder','order'],['rankingQuery','query'],['rankingMinimum','minimum']].forEach(([id,key]) => document.getElementById(id).addEventListener('input', e => {
@@ -2430,20 +2430,44 @@ function renderEmpty() {
   }));
   renderComparisonResults();
   const trendYears = YEARS.filter(y => Number(y) >= 2015);
-  const rateAxisMax = Math.max(10, Math.ceil(Math.max(...trendYears.flatMap(y => [byYearBenchmark(y)?.data || 0, byYearBenchmark(y)?.code || 0])) * 10) * 10);
-  const paperAxisMax = Math.max(100000, Math.ceil(Math.max(...trendYears.map(y => byYearBenchmark(y)?.n || 0)) / 100000) * 100000);
-  charts.corpusReporting = new Chart(document.getElementById('corpusReportingChart').getContext('2d'), {
-    type: 'line',
-    data: { labels: trendYears, datasets: [
-      { type:'bar', label:'Scored papers', yAxisID:'papers', data:trendYears.map(y => byYearBenchmark(y)?.n ?? null), backgroundColor:'rgba(168,200,224,0.18)', borderColor:'rgba(168,200,224,0.45)', borderWidth:1, order:2 },
-      { label: 'Data availability', yAxisID:'y', data: trendYears.map(y => {const v=byYearBenchmark(y)?.data; return v == null ? null : v*100;}), borderColor: BLUE, backgroundColor: BLUE, tension:0.2, pointRadius:3 },
-      { label: 'Code availability', yAxisID:'y', data: trendYears.map(y => {const v=byYearBenchmark(y)?.code; return v == null ? null : v*100;}), borderColor:'#68d391', backgroundColor:'#68d391', tension:0.2, pointRadius:3 }
-    ]},
-    options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
-      plugins:{legend:{labels:{color:'#A8C8E0'}}, tooltip:{callbacks:{label:ctx => ctx.dataset.yAxisID === 'papers' ? `Scored papers: ${ctx.parsed.y.toLocaleString()}` : `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}}},
-      scales:{papers:{position:'right',beginAtZero:true,min:0,max:paperAxisMax,title:{display:true,text:'Scored papers',color:'#A8C8E0'},ticks:{color:'#A8C8E0',stepSize:paperAxisMax/5,autoSkip:false,callback:v => Number(v).toLocaleString()},grid:{drawOnChartArea:false,drawTicks:true}},x:{title:{display:true,text:'Publication year',color:'#A8C8E0'},ticks:{color:'#A8C8E0'},grid:{color:'rgba(41,171,226,0.1)'}},y:{beginAtZero:true,min:0,max:rateAxisMax,title:{display:true,text:'Papers with an availability statement (%)',color:'#A8C8E0'},ticks:{color:'#A8C8E0',stepSize:rateAxisMax/5,autoSkip:false,callback:v => `${v}%`},grid:{color:'rgba(168,200,224,0.22)'}}}
-    }
-  });
+  const snPublishers = GROUPS['Springer Nature'] || [];
+  const snJournals = [...new Set(snPublishers.flatMap(p => DATA.p[p] || []))];
+  const rangePublishers = Object.keys(DATA.p)
+    .map(p => ({name:p,n:aggregateYear([...new Set(DATA.p[p])], '2024')?.n || 0}))
+    .filter(p => p.n > 0).sort((a,b) => b.n-a.n || a.name.localeCompare(b.name)).slice(0,10).map(p => p.name);
+  const rangeByYear = trendYears.map(year => rangePublishers.map(p => aggregateYear([...new Set(DATA.p[p])],year)?.r).filter(v => v != null));
+  const series = [
+    {label:'All journals', rows:trendYears.map(y => byYearBenchmark(y)),color:BLUE},
+    {label:'SciScore client journals',rows:trendYears.map(y => Number(y) >= 2019 ? clientOrgBenchmark(y) : null),color:'#de79c4'}
+  ];
+  const datasets = [
+    {label:'Publisher range lower', data:rangeByYear.map(v => v.length ? Math.min(...v) : null),borderWidth:0,pointRadius:0,backgroundColor:'transparent'},
+    {label:'Range of 10 large publishers',data:rangeByYear.map(v => v.length ? Math.max(...v) : null),borderWidth:0,pointRadius:0,backgroundColor:'rgba(168,200,224,0.16)',fill:'-1'},
+    ...series.map(row => ({label:row.label,data:row.rows.map(v => v?.r ?? null),borderColor:row.color,backgroundColor:row.color,borderDash:row.dash || [],pointRadius:3,tension:0,spanGaps:false}))
+  ];
+  const options = rtiTrendChartOptions(datasets);
+  const paperMax = Math.max(100000, Math.ceil(Math.max(...trendYears.map(y => byYearBenchmark(y)?.n || 0))/100000)*100000);
+  const rangeScores = datasets.flatMap(row => row.data).filter(v => typeof v === 'number' && Number.isFinite(v));
+  options.scales.y.min = Math.min(3, Math.floor(Math.min(...rangeScores)*2)/2);
+  options.scales.y.max = Math.max(5, Math.ceil(Math.max(...rangeScores)*2)/2);
+  const gridIntervals = 5;
+  options.scales.y.ticks.stepSize = (options.scales.y.max-options.scales.y.min)/gridIntervals;
+  options.scales.y.ticks.autoSkip = false;
+  options.scales.papers = {position:'right',min:0,max:paperMax,title:{display:true,text:'Scored papers',color:MUTED},ticks:{color:MUTED,stepSize:paperMax/gridIntervals,autoSkip:false,callback:v => Math.round(v).toLocaleString('en-US')},grid:{drawOnChartArea:false}};
+  datasets.forEach(row => row.yAxisID = 'y');
+  datasets.push({type:'bar',label:'Scored papers · all journals',yAxisID:'papers',data:trendYears.map(y => byYearBenchmark(y)?.n ?? null),backgroundColor:'rgba(41,171,226,0.15)',borderColor:'rgba(41,171,226,0.35)',borderWidth:1,order:3});
+  options.interaction = {mode:'index',intersect:false};
+  options.scales.x.title = {display:true,text:'Publication year',color:MUTED};
+  options.plugins.legend.labels.filter = item => item.datasetIndex !== 0;
+  options.plugins.tooltip.filter = item => item.datasetIndex >= 2;
+  options.plugins.tooltip.callbacks.label = ctx => {
+    if (ctx.dataset.yAxisID === 'papers') return `Scored papers: ${ctx.parsed.y.toLocaleString()}`;
+    const row = series[ctx.datasetIndex-2]?.rows[ctx.dataIndex];
+    return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} · ${row?.n?.toLocaleString() ?? '—'} scored papers`;
+  };
+  charts.corpusReporting = new Chart(document.getElementById('corpusReportingChart').getContext('2d'), {type:'line',data:{labels:trendYears,datasets},options});
+
+
 }
 
 function renderPublisherDashboard() {
