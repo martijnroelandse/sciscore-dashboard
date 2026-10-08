@@ -533,6 +533,35 @@
   .year-check { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: #b9cbe0; font-size: 13px; }
   .year-check select { padding: 6px 10px; border: 1px solid #40536b; border-radius: 6px; background: #152440; color: white; }
 
+
+.rank-journal { background:transparent; border:0; color:var(--blue-light); text-align:left; cursor:pointer; font:inherit; padding:0; }
+.rank-journal:hover { text-decoration:underline; }
+#rankingQuery, #rankingMinimum, #publisherQuery, #publisherMinimum { background:var(--navy-mid); color:var(--text); border:1px solid var(--blue-border); border-radius:6px; padding:7px; }
+.comparison-panel p { color:var(--muted); font-size:0.8rem; line-height:1.55; margin:0 0 14px; }
+.comparison-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+.comparison-filters label { display:flex; flex-direction:column; gap:6px; color:var(--muted); font-size:0.75rem; }
+.comparison-filters select, .comparison-filters input { width:100%; font:inherit; min-height:34px; }
+.comparison-table-scroll { max-height:440px; overflow:auto; }
+#rankingResults { max-height:440px; overflow:auto; margin-top:14px; }
+.comparison-panel .rrid-compare-table { table-layout:fixed; width:100%; }
+.comparison-panel .rrid-compare-table th, .comparison-panel .rrid-compare-table td { padding:10px 8px; font-size:0.78rem; line-height:1.4; vertical-align:middle; }
+.comparison-panel .rrid-compare-table th { position:sticky; top:0; background:var(--navy-card); }
+.comparison-panel .rrid-compare-table th:not(:first-child), .comparison-panel .rrid-compare-table td:not(:first-child) { text-align:right; font-variant-numeric:tabular-nums; }
+.comparison-panel .rrid-compare-table th:first-child { width:58%; }
+.comparison-panel .rrid-compare-table th:nth-child(2) { width:12%; }
+.comparison-panel .rrid-compare-table th:nth-child(3) { width:15%; }
+.comparison-panel .rank-journal { font:inherit; line-height:inherit; }
+.comparison-panel .rank-publisher { background:transparent; border:0; color:var(--blue-light); text-align:left; cursor:pointer; font:inherit; line-height:inherit; padding:0; }
+.comparison-panel .rank-publisher:hover { text-decoration:underline; }
+.guide-intro { color:var(--muted); font-size:0.85rem; margin-top:8px; }
+.guide-paths { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; margin:24px 0 18px; }
+.guide-path { display:flex; gap:12px; align-items:flex-start; }
+.guide-icon { color:var(--blue-light); background:var(--blue-dim); border:1px solid var(--blue-border); border-radius:8px; width:38px; height:38px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.4rem; }
+.guide-path h2 { color:var(--text); font-size:0.9rem; margin-bottom:8px; }
+.guide-path p { color:var(--muted); font-size:0.8rem; line-height:1.55; }
+.guide-action { display:block; color:var(--blue-light); font-size:0.72rem; margin-top:10px; line-height:1.4; }
+.guide-footnote { color:var(--muted); font-size:0.72rem; line-height:1.5; border-top:1px solid var(--blue-border); padding-top:12px; }
+@media(max-width:1000px) { .guide-paths { grid-template-columns:1fr; gap:18px; } }
 </style>
 </head>
 <body>
@@ -1341,10 +1370,10 @@ async function loadJournalRrids(journal, year) {
   const promise = (async () => {
     const { hitCount, pmcIds } = await searchEpmcArticles(journal, year);
     if (!pmcIds.length) {
-      return { ok: true, hitCount, sampled: 0, rrids: [], grouped: {} };
+      return { ok: true, hitCount, sampled: 0, rrids: [], grouped: {}, retrievedAt: new Date().toISOString() };
     }
     const rrids = await fetchRridsForPmcIds(pmcIds);
-    return { ok: true, hitCount, sampled: pmcIds.length, rrids, grouped: groupRrids(rrids) };
+    return { ok: true, hitCount, sampled: pmcIds.length, rrids, grouped: groupRrids(rrids), retrievedAt: new Date().toISOString() };
   })().catch(err => ({ ok: false, error: err.message || String(err) }));
 
   rridCache.set(key, promise);
@@ -1360,11 +1389,12 @@ function renderRridPanel(data, journal, year) {
     return;
   }
 
+  const sampleNote = `<p class="rrid-muted">Live Europe PMC lookup · retrieved ${safeText(data.retrievedAt || 'time unavailable')} · ${data.sampled} open-full-text articles inspected from up to ${RRID_SAMPLE_SIZE} RRID search hits. This is a search sample, not the scored SciScore corpus or a prevalence estimate. Counts below are unique identifiers, not papers.</p>`;
   if (!data.rrids.length) {
     const hint = data.hitCount
       ? ` Europe PMC lists ${data.hitCount.toLocaleString()} articles mentioning RRIDs, but none had open full text in the sample.`
       : '';
-    el.innerHTML = `<p class="rrid-muted">No RRIDs found in Europe PMC for <strong>${journal}</strong> (${year}).${hint}</p>`;
+    el.innerHTML = sampleNote + `<p class="rrid-muted">No RRIDs found in Europe PMC for <strong>${journal}</strong> (${year}).${hint}</p>`;
     return;
   }
 
@@ -1419,7 +1449,7 @@ function renderRridPanel(data, journal, year) {
     </div>`;
   }).join('');
 
-  el.innerHTML = compareHtml + summary + `<div class="rrid-groups">${groups}</div>`;
+  el.innerHTML = sampleNote + compareHtml + summary + `<div class="rrid-groups">${groups}</div>`;
 }
 
 async function loadRridPanel() {
@@ -2172,11 +2202,11 @@ const RESOURCE_ROWS = [
 ];
 
 function renderOpenScienceGrid(yd, year) {
-  return renderMetricBarGrid(OPEN_SCIENCE_ROWS, yd, year);
+  return `<p class="rrid-muted">Availability rates use ${yd.n.toLocaleString()} scored papers as the denominator. Detected statement counts appear beside each measure; identifier densities are counts per paper.</p>` + renderMetricBarGrid(OPEN_SCIENCE_ROWS, yd, year);
 }
 
 function renderResourceGrid(yd, year) {
-  return renderMetricBarGrid(RESOURCE_ROWS, yd, year);
+  return '<p class="rrid-muted">Findability percentages describe identified resources among detected resources of that type. Detected counts are resources, not papers.</p>' + renderMetricBarGrid(RESOURCE_ROWS, yd, year);
 }
 
 
@@ -2303,10 +2333,12 @@ function selectPublisherYear(y) {
 function togglePanel(id) {
   const panel = document.getElementById(id);
   panel?.classList.toggle('collapsed');
+  panel?.querySelector('.panel-toggle')?.setAttribute('aria-expanded', String(!panel.classList.contains('collapsed')));
   if (panel && !panel.classList.contains('collapsed')) {
     requestAnimationFrame(() => {
       if (id === 'panelTrend' && charts.trend) charts.trend.resize();
       if (id === 'panelStudy' && charts.radar) charts.radar.resize();
+      if (id === 'panelCorpusTrends' && charts.corpusReporting) charts.corpusReporting.resize();
     });
   }
 }
@@ -2323,14 +2355,80 @@ function renderMain() {
   else renderEmpty();
 }
 
+const comparisonState = { publisherYear: '2024', publisherMinimum: 100, publisherOrder: 'asc', publisherQuery: '', year: '2024', minimum: 100, order: 'asc', query: '' };
+const safeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function showComparisons() { selectedJournal = null; destroyCharts(); renderEmpty(); }
+function openRankedJournal(name) {
+  selectJournal(name);
+  selectedYear = comparisonState.year;
+  renderMain();
+}
+function renderComparisonResults() {
+  const {year, minimum, order, query} = comparisonState;
+  const rows = Object.keys(DATA.j).map(name => ({name, yd: DATA.j[name].y?.[year]}))
+    .filter(row => row.yd?.n >= minimum && row.yd.r != null && row.name.toLowerCase().includes(query.toLowerCase()))
+    .sort((a,b) => (order === 'asc' ? a.yd.r-b.yd.r : b.yd.r-a.yd.r) || a.name.localeCompare(b.name));
+  document.getElementById('rankingResults').innerHTML = `<p>${rows.length.toLocaleString()} eligible journals · showing the first 50. RTI is compared within the scored OA corpus; subject and article mix can differ.</p>
+    <table class="rrid-compare-table"><thead><tr><th>Journal</th><th>RTI</th><th>Scored papers</th></tr></thead><tbody>${rows.slice(0,50).map(row => `<tr><td><button type="button" class="rank-journal">${safeText(row.name)}</button></td><td>${row.yd.r.toFixed(2)}</td><td>${row.yd.n.toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="3">No journals meet these filters.</td></tr>'}</tbody></table>`;
+  document.querySelectorAll('#rankingResults .rank-journal').forEach((button,i) => button.onclick = () => openRankedJournal(rows[i].name));
+  const publishers = Object.keys(DATA.p).map(name => ({name, yd: aggregateYear([...new Set(DATA.p[name])],comparisonState.publisherYear)})).filter(row => row.yd?.r != null && row.yd.n >= comparisonState.publisherMinimum && row.name.toLowerCase().includes(comparisonState.publisherQuery.toLowerCase())).sort((a,b) => (comparisonState.publisherOrder === 'asc' ? a.yd.r-b.yd.r : b.yd.r-a.yd.r) || a.name.localeCompare(b.name));
+  document.getElementById('publisherResults').innerHTML = `<table class="rrid-compare-table"><thead><tr><th>Publisher</th><th>RTI</th><th>Scored papers</th><th>Journals with data</th></tr></thead><tbody>${publishers.map(row => `<tr><td><button type="button" class="rank-publisher">${safeText(row.name)}</button></td><td>${row.yd.r.toFixed(2)}</td><td>${row.yd.n.toLocaleString()}</td><td>${row.yd.journalCount}</td></tr>`).join('')}</tbody></table>`;
+  document.querySelectorAll('#publisherResults .rank-publisher').forEach((button,i) => button.onclick = () => {
+    selectedJournal = null;
+    groupSelect.value = '';
+    populatePublishers();
+    pubSelect.value = publishers[i].name;
+    selectedYear = comparisonState.publisherYear;
+    renderJournalList();
+    renderMain();
+  });
+}
 function renderEmpty() {
-  document.getElementById('main').innerHTML = `
-    <div class="empty">
-      <div class="empty-icon">🔬</div>
-      <div class="empty-title">Select a publisher group or publisher to explore</div>
-      <div class="empty-sub">Or pick a journal from the list · ${JOURNAL_COUNT_LABEL} journals · ${DATA_YEAR_LABEL}</div>
-    </div>
-  `;
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="journal-header comparison-guide"><div class="journal-title">Explore and compare journals</div><p class="guide-intro">Start with a journal or publisher in the sidebar, or open a comparison below.</p><div class="guide-paths">
+      <div class="guide-path"><span class="guide-icon" aria-hidden="true">▤</span><div><h2>Explore a journal</h2><p>See its RTI, reporting practices and changes over time. Check the scored-paper count alongside each result.</p><span class="guide-action">Choose a journal in the sidebar</span></div></div>
+      <div class="guide-path"><span class="guide-icon" aria-hidden="true">⇄</span><div><h2>Compare performance</h2><p>Rank journals by RTI with a minimum sample size, or compare paper-weighted publisher averages.</p><span class="guide-action">Open journal or publisher ranking</span></div></div>
+      <div class="guide-path"><span class="guide-icon" aria-hidden="true">↗</span><div><h2>Follow reporting trends</h2><p>See how data and code availability statements change across years, with the annual scored sample.</p><span class="guide-action">Open corpus reporting trends</span></div></div>
+    </div><p class="guide-footnote">All comparisons below describe scored PMC open-access papers. More coverage detail is available in the sidebar.<br>Need journal or publisher coverage beyond PMC open-access papers? Extended coverage is available on request.</p></div>
+    <div class="detail-panel comparison-panel collapsed" id="panelRanking"><button type="button" class="panel-toggle" aria-expanded="false" aria-controls="rankingBody" onclick="togglePanel('panelRanking')"><span class="panel-toggle-title">Journal ranking</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="rankingBody">
+      <div class="comparison-filters">
+      <label>Publication year <select id="rankingYear">${YEARS.map(y => `<option ${y === comparisonState.year ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
+      <label>Minimum scored papers <input id="rankingMinimum" type="number" min="1" value="${comparisonState.minimum}"></label>
+      <label>RTI order <select id="rankingOrder"><option value="asc">Lowest first</option><option value="desc">Highest first</option></select></label>
+      <label>Journal name <input id="rankingQuery" type="search" placeholder="Find journals"></label></div><div id="rankingResults"></div></div></div>
+    <div class="detail-panel comparison-panel collapsed" id="panelPublisherComparison"><button type="button" class="panel-toggle" aria-expanded="false" aria-controls="publisherComparisonBody" onclick="togglePanel('panelPublisherComparison')"><span class="panel-toggle-title">Publisher ranking</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="publisherComparisonBody"><div class="comparison-filters" style="margin-bottom:14px"><label>Publication year <select id="publisherComparisonYear">${YEARS.map(y => `<option ${y === comparisonState.publisherYear ? 'selected' : ''}>${y}</option>`).join('')}</select></label>
+      <label>Minimum scored papers <input id="publisherMinimum" type="number" min="1" value="${comparisonState.publisherMinimum}"></label>
+      <label>RTI order <select id="publisherOrder"><option value="asc">Lowest first</option><option value="desc">Highest first</option></select></label>
+      <label>Publisher name <input id="publisherQuery" type="search" placeholder="Find publishers"></label></div><p>RTI is weighted by scored papers: each journal's RTI × its paper count, divided by the total count. This is not an equal-weighted average of journals. Publishers are listed individually; sidebar publisher groups combine several publishers. Shared journals can appear under more than one publisher.</p><div id="publisherResults" class="comparison-table-scroll"></div></div></div>
+    <div class="detail-panel comparison-panel" id="panelCorpusTrends"><button type="button" class="panel-toggle" aria-expanded="true" aria-controls="corpusTrendsBody" onclick="togglePanel('panelCorpusTrends')"><span class="panel-toggle-title">Corpus reporting trends · data and code availability</span><span class="panel-chevron">▼</span></button><div class="panel-body" id="corpusTrendsBody"><p>Percentages describe papers with a detected availability statement. The paper count is the scored sample for that year. Availability statements do not establish that data or code were shared.</p><div class="chart-wrap" style="height:280px"><canvas id="corpusReportingChart" aria-label="Data and code availability statements by publication year" role="img"></canvas></div><details style="margin-top:14px"><summary class="guide-action" style="cursor:pointer">View values</summary><table class="rrid-compare-table"><thead><tr><th>Year</th><th>Scored papers</th><th>Data availability</th><th>Code availability</th></tr></thead><tbody>${YEARS.filter(y => Number(y)>=2015).map(y => { const yd = byYearBenchmark(y); return `<tr><td>${y}</td><td>${yd?.n?.toLocaleString() ?? '—'}</td><td>${pct(yd?.data)}</td><td>${pct(yd?.code)}</td></tr>`; }).join('')}</tbody></table></details></div></div>`;
+  document.getElementById('rankingOrder').value = comparisonState.order;
+  document.getElementById('rankingQuery').value = comparisonState.query;
+  [['rankingYear','year'],['rankingOrder','order'],['rankingQuery','query'],['rankingMinimum','minimum']].forEach(([id,key]) => document.getElementById(id).addEventListener('input', e => {
+    comparisonState[key] = key === 'minimum' ? Math.max(1, Number(e.target.value) || 1) : e.target.value;
+    renderComparisonResults();
+  }));
+  document.getElementById('publisherOrder').value = comparisonState.publisherOrder;
+  document.getElementById('publisherQuery').value = comparisonState.publisherQuery;
+  [['publisherComparisonYear','publisherYear'],['publisherMinimum','publisherMinimum'],['publisherOrder','publisherOrder'],['publisherQuery','publisherQuery']].forEach(([id,key]) => document.getElementById(id).addEventListener('input', e => {
+    comparisonState[key] = key === 'publisherMinimum' ? Math.max(1, Number(e.target.value) || 1) : e.target.value;
+    renderComparisonResults();
+  }));
+  renderComparisonResults();
+  const trendYears = YEARS.filter(y => Number(y) >= 2015);
+  const rateAxisMax = Math.max(10, Math.ceil(Math.max(...trendYears.flatMap(y => [byYearBenchmark(y)?.data || 0, byYearBenchmark(y)?.code || 0])) * 10) * 10);
+  const paperAxisMax = Math.max(100000, Math.ceil(Math.max(...trendYears.map(y => byYearBenchmark(y)?.n || 0)) / 100000) * 100000);
+  charts.corpusReporting = new Chart(document.getElementById('corpusReportingChart').getContext('2d'), {
+    type: 'line',
+    data: { labels: trendYears, datasets: [
+      { type:'bar', label:'Scored papers', yAxisID:'papers', data:trendYears.map(y => byYearBenchmark(y)?.n ?? null), backgroundColor:'rgba(168,200,224,0.18)', borderColor:'rgba(168,200,224,0.45)', borderWidth:1, order:2 },
+      { label: 'Data availability', yAxisID:'y', data: trendYears.map(y => {const v=byYearBenchmark(y)?.data; return v == null ? null : v*100;}), borderColor: BLUE, backgroundColor: BLUE, tension:0.2, pointRadius:3 },
+      { label: 'Code availability', yAxisID:'y', data: trendYears.map(y => {const v=byYearBenchmark(y)?.code; return v == null ? null : v*100;}), borderColor:'#68d391', backgroundColor:'#68d391', tension:0.2, pointRadius:3 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#A8C8E0'}}, tooltip:{callbacks:{label:ctx => ctx.dataset.yAxisID === 'papers' ? `Scored papers: ${ctx.parsed.y.toLocaleString()}` : `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}}},
+      scales:{papers:{position:'right',beginAtZero:true,min:0,max:paperAxisMax,title:{display:true,text:'Scored papers',color:'#A8C8E0'},ticks:{color:'#A8C8E0',stepSize:paperAxisMax/5,autoSkip:false,callback:v => Number(v).toLocaleString()},grid:{drawOnChartArea:false,drawTicks:true}},x:{title:{display:true,text:'Publication year',color:'#A8C8E0'},ticks:{color:'#A8C8E0'},grid:{color:'rgba(41,171,226,0.1)'}},y:{beginAtZero:true,min:0,max:rateAxisMax,title:{display:true,text:'Papers with an availability statement (%)',color:'#A8C8E0'},ticks:{color:'#A8C8E0',stepSize:rateAxisMax/5,autoSkip:false,callback:v => `${v}%`},grid:{color:'rgba(168,200,224,0.22)'}}}
+    }
+  });
 }
 
 function renderPublisherDashboard() {
@@ -2345,11 +2443,12 @@ function renderPublisherDashboard() {
 
   main.innerHTML = `
     <div class="journal-header">
-      <div class="journal-title">${label}</div>
+      <button class="rank-journal" onclick="showComparisons()">← Journal comparisons</button><div class="journal-title">${label}</div>
       <div class="journal-publisher">Publisher ${scope.type === 'group' ? 'group' : ''} overview · ${sublabel}</div>
       <div class="pub-stats">
         <span class="pub-stat">${journals.length.toLocaleString()} journals</span>
-        <span class="pub-stat">Paper-weighted aggregates</span>
+        <span class="pub-stat">Paper-weighted RTI</span>
+        <details><summary>How this comparison is calculated</summary><p>RTI is weighted by each journal’s scored-paper count, rather than giving every journal equal weight. Missing scores are excluded. A publisher group combines publishers; shared journals are counted once within this overview.</p>${scope.type === 'group' ? `<p>Publishers: ${safeText((GROUPS[label] || []).join(', '))}</p>` : ''}</details>
       </div>
     </div>
 
@@ -2557,7 +2656,7 @@ function renderDashboard() {
   main.innerHTML = `
     ${scope ? `<div class="breadcrumb"><button type="button" class="breadcrumb-btn" onclick="backToPublisher()">← ${scope.label} overview</button></div>` : ''}
     <div class="journal-header">
-      <div class="journal-title">${selectedJournal}</div>
+      <button class="rank-journal" onclick="showComparisons()">← Journal comparisons</button><div class="journal-title">${selectedJournal}</div>
       <div class="journal-publisher">${jdata.pub || '<span style="opacity:0.5">Publisher not matched (Scopus)</span>'}${jdata.pub ? ' · ' + getPublisherGroup(jdata.pub) : ''}${Array.isArray(jdata.pub_also) && jdata.pub_also.length ? ' · also ' + jdata.pub_also.map(p => esc(p)).join(', ') : ''}</div>
     </div>
 
