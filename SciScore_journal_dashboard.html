@@ -3204,7 +3204,7 @@ function pptxFooterBranding(sl, theme, opts = {}) {
   const color = onDark ? 'A8C8E0' : '999999';
 
   const fullCorpus = Object.values(DATA.j || {}).some(j => Object.values(j.y || {}).some(row => row.corpus === 'full'));
-  const coverageLabel = fullCorpus ? 'Scored client corpus' : 'Scored PMC open-access subset';
+  const coverageLabel = DATA.test_label || (fullCorpus ? 'Scored client corpus' : 'Scored PMC open-access subset');
   sl.addText(`${coverageLabel} · counts are the scored sample, not total journal output`, { x: 0.35, y: H - (onDark ? 0.85 : 0.62), w: W - 0.7, h: 0.18, fontSize: 7, color: onDark ? 'A8C8E0' : '777777', fontFace: face });
   sl.addText([
     { text: 'sciscore.com', options: { fontSize, color, fontFace: face, hyperlink: { url: PPTX_SITE_URL } } },
