@@ -70,6 +70,7 @@
     transition: background 0.15s;
   }
   .header-link:hover { background: var(--blue-dim); color: var(--navy); }
+  .share-link-btn { background: transparent; cursor: pointer; font-family: inherit; }
 
   /* ── LAYOUT ── */
   .layout { display: flex; flex: 1; overflow: hidden; }
@@ -583,6 +584,7 @@ document.addEventListener('DOMContentLoaded', function earlyShellBoot() {
   <nav class="header-nav">
     <a class="header-link" href="#" onclick="showComparisons(); return false;">Home</a>
     <a class="header-link" href="addendum.html">Methods &amp; glossary</a>
+    <button class="header-link share-link-btn" id="shareLinkBtn" type="button" onclick="copyShareLink()" title="Copy a link to the current view">Copy link</button>
     <div class="header-badge" id="headerYearBadge"></div>
   </nav>
 </header>
@@ -2330,7 +2332,7 @@ function backToPublisher() {
 function selectYear(y) {
   selectedYear = y;
   if (selectedJournal) renderMain();
-  else renderPublisherYearContent();
+  else { renderPublisherYearContent(); syncUrlState(); }
 }
 
 function selectPublisherYear(y) {
@@ -2356,6 +2358,7 @@ function destroyCharts() {
 }
 
 function renderMain() {
+  syncUrlState();
   destroyCharts();
   if (selectedJournal) renderDashboard();
   else if (publisherScope()) renderPublisherDashboard();
@@ -2942,6 +2945,64 @@ async function parseJournalData(text) {
   });
 }
 
+/* ── Shareable links: ?group=…&publisher=…&journal=…&year=… ── */
+let urlStateReady = false;
+
+function syncUrlState() {
+  if (!urlStateReady || !window.history?.replaceState) return;
+  const params = new URLSearchParams();
+  if (groupSelect.value) params.set('group', groupSelect.value);
+  if (pubSelect.value) params.set('publisher', pubSelect.value);
+  if (selectedJournal) params.set('journal', selectedJournal);
+  if (selectedYear && (selectedJournal || publisherScope())) params.set('year', String(selectedYear));
+  const qs = params.toString();
+  const url = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+  try { window.history.replaceState(null, '', url); } catch (e) { /* ignore */ }
+}
+
+function applyUrlState() {
+  let params;
+  try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+  const group = params.get('group');
+  const publisher = params.get('publisher');
+  const journal = params.get('journal');
+  const year = params.get('year');
+  if (group && GROUPS[group]) { groupSelect.value = group; populatePublishers(); }
+  if (publisher && DATA.p[publisher]) {
+    if (groupSelect.value && !(GROUPS[groupSelect.value] || []).includes(publisher)) {
+      groupSelect.value = ''; populatePublishers();
+    }
+    pubSelect.value = publisher;
+  }
+  if (journal && DATA.j[journal]) {
+    selectedJournal = journal;
+    const years = YEARS.filter(y => DATA.j[journal].y[y]);
+    selectedYear = (year && DATA.j[journal].y[year]) ? year : (years[years.length - 1] || null);
+  } else {
+    const scope = publisherScope();
+    if (scope) {
+      const years = yearsForJournals(scope.journals);
+      selectedYear = (year && years.includes(year)) ? year : (years[years.length - 1] || null);
+    }
+  }
+}
+
+function copyShareLink() {
+  syncUrlState();
+  const url = window.location.href;
+  const btn = document.getElementById('shareLinkBtn');
+  const done = () => {
+    if (!btn) return;
+    btn.textContent = 'Link copied';
+    setTimeout(() => { btn.textContent = 'Copy link'; }, 1800);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url).then(done, () => window.prompt('Copy this link:', url));
+  } else {
+    window.prompt('Copy this link:', url);
+  }
+}
+
 async function bootstrapDashboard() {
   const countEl = document.getElementById('journalCountLabel');
   try {
@@ -2960,6 +3021,8 @@ async function bootstrapDashboard() {
     populateGroups();
     populatePublishers();
     populateCompareSelect();
+    applyUrlState();
+    urlStateReady = true;
     showExportBtn();
     renderJournalList();
     renderMain();
