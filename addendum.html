@@ -233,7 +233,9 @@
       SciScore identifies key biological resources mentioned in the manuscript — antibodies,
       organisms, cell lines, and software tools — and checks whether each is uniquely identifiable
       (via a Research Resource Identifier, RRID, or an RRID suggestion). The resource score
-      compares uniquely identifiable resources to the total resources detected.
+      compares uniquely identifiable resources to the total resources detected. See the
+      <a href="https://www.scicrunch.com/faq-rrid" target="_blank" rel="noopener">SciScore RRID FAQ</a>
+      for how resources are detected and how RRIDs are checked.
     </p>
 
     <h3>Not applicable (score = 0)</h3>
@@ -242,6 +244,19 @@
       work, or manuscripts with no methods section) receive a SciScore of&nbsp;0 and are marked
       <em>not applicable</em>. These papers are <strong>excluded from RTI aggregation</strong> —
       only papers with SciScore&nbsp;&gt;&nbsp;0 contribute to journal and portfolio averages.
+    </p>
+
+    <h3>Which papers count for a criterion</h3>
+    <p>
+      Not every criterion is required for every paper. Which items apply depends on the
+      reporting guidelines that fit the study: blinding for an experimental study, an IRB
+      statement only when there are human participants. When an item is not required, a
+      &ldquo;not detected&rdquo; does not lower the paper&rsquo;s score. The rates for sex,
+      power analysis, randomization and blinding therefore only count papers for which the
+      applicable guidelines require the item. IRB and IACUC rates are shown as a share of all
+      papers, because the current data does not mark which papers required them. See the
+      <a href="https://www.scicrunch.com/faq-rigor" target="_blank" rel="noopener">SciScore rigor FAQ</a>
+      for how criteria are detected.
     </p>
 
     <h3>Open science & identifiers (journal aggregates)</h3>
@@ -388,19 +403,19 @@
         </tr>
         <tr>
           <td>Sex (sex)</td>
-          <td>Proportion of papers reporting sex as a biological variable or sex of study subjects.</td>
+          <td>Of the papers for which the applicable reporting guidelines require this item, the proportion reporting sex as a biological variable or sex of study subjects.</td>
         </tr>
         <tr>
           <td>Power (pwr)</td>
-          <td>Proportion of papers reporting a power analysis or sample-size justification.</td>
+          <td>Of the papers for which the applicable reporting guidelines require this item, the proportion reporting a power analysis or sample-size justification.</td>
         </tr>
         <tr>
           <td>Randomization (rand)</td>
-          <td>Proportion of papers reporting random assignment of subjects or samples to groups.</td>
+          <td>Of the papers for which the applicable reporting guidelines require this item, the proportion reporting random assignment of subjects or samples to groups.</td>
         </tr>
         <tr>
           <td>Blinding (blind)</td>
-          <td>Proportion of papers reporting blinding of investigators, assessors, or analysts.</td>
+          <td>Of the papers for which the applicable reporting guidelines require this item, the proportion reporting blinding of investigators, assessors, or analysts.</td>
         </tr>
         <tr>
           <td>Antibodies w/ RRID (ab)</td>
