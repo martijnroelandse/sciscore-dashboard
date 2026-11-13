@@ -308,7 +308,9 @@
       Beyond RTI, the dashboard shows the <strong>proportion of papers addressing each criterion</strong>
       within a journal or portfolio — for example, the percentage of papers reporting randomization,
       blinding, or power analysis, and the percentage of detected antibodies, organisms, cell lines,
-      or tools that carry an RRID. These are stored as rates between 0 and 1 and displayed as
+      or tools classified as uniquely identifiable in the SciScore export. For each resource type,
+      this is the <em>findable</em> count divided by the <em>detected</em> count; it is not the
+      percentage of papers mentioning an RRID. These are stored as rates between 0 and 1 and displayed as
       percentages in the UI.
     </p>
 
@@ -418,20 +420,20 @@
           <td>Of the papers for which the applicable reporting guidelines require this item, the proportion reporting blinding of investigators, assessors, or analysts.</td>
         </tr>
         <tr>
-          <td>Antibodies w/ RRID (ab)</td>
-          <td>Among detected antibodies, the proportion with an RRID or RRID suggestion.</td>
+          <td>Antibody identifiability (ab)</td>
+          <td>Among detected antibodies, the proportion classified as uniquely identifiable (antibody findable ÷ antibody detected).</td>
         </tr>
         <tr>
-          <td>Organisms w/ RRID (org)</td>
-          <td>Among detected organisms/model systems, the proportion with an RRID.</td>
+          <td>Organism identifiability (org)</td>
+          <td>Among detected organisms/model systems, the proportion classified as uniquely identifiable (organism findable ÷ organism detected).</td>
         </tr>
         <tr>
-          <td>Cell lines w/ RRID (cl)</td>
-          <td>Among detected cell lines, the proportion with an RRID.</td>
+          <td>Cell-line identifiability (cl)</td>
+          <td>Among detected cell lines, the proportion classified as uniquely identifiable (cell line findable ÷ cell line detected).</td>
         </tr>
         <tr>
           <td>Software tools (tool)</td>
-          <td>Among detected software tools, the proportion with an RRID.</td>
+          <td>Among detected software tools, the proportion classified as uniquely identifiable (tool findable ÷ tool detected).</td>
         </tr>
         <tr>
           <td>Data availability (data)</td>
