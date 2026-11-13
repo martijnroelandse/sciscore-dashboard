@@ -2490,8 +2490,13 @@ function renderPublisherDashboard() {
       <div class="pub-stats">
         <span class="pub-stat">${journals.length.toLocaleString()} journals</span>
         <span class="pub-stat">Paper-weighted RTI</span>
-        <details><summary>How this comparison is calculated</summary><p>RTI is weighted by each journal’s scored-paper count, rather than giving every journal equal weight. Missing scores are excluded. A publisher group combines publishers; shared journals are counted once within this overview.</p>${scope.type === 'group' ? `<p>Publishers: ${safeText((GROUPS[label] || []).join(', '))}</p>` : ''}</details>
       </div>
+    </div>
+
+    <div class="insight-banner" style="margin-bottom:20px">
+      <div class="insight-banner-title">How this comparison is calculated</div>
+      <div>RTI is weighted by each journal’s scored-paper count, rather than giving every journal equal weight. Missing scores are excluded.</div>
+      <div class="insight-banner-detail">A publisher group combines publishers; shared journals are counted once within this overview.${scope.type === 'group' ? ` Publishers: ${safeText((GROUPS[label] || []).join(', '))}` : ''}</div>
     </div>
 
     <div class="year-tabs" id="yearTabs">
