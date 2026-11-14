@@ -1,0 +1,46 @@
+/* RTI Explorer by SciScore · approved 14 November 2026. */
+@font-face{font-family:Raleway;src:url('fonts/Raleway.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:Roboto;src:url('fonts/Roboto.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+:root{--brand-blue:#009DE4;--link-blue:#0079B8;--navy:#143959;--navy-mid:#f0f6fa;--navy-deep:#143959;--navy-card:#fff;--navy-hover:#e5f2fa;--blue:#0079B8;--blue-light:#0079B8;--blue-dim:rgba(0,157,228,.08);--blue-border:rgba(0,121,184,.22);--white:#143959;--text:#28232A;--muted:#526779;--gridline:rgba(20,57,89,.12);--good:#16815b;--bad:#b73737;--warn:#946000}
+body{font-family:Roboto,Arial,sans-serif;background:#f5f8fb;color:#28232A}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3,h4,h5,h6,.journal-title,.ent-title,.hero-rti-title,.sidebar-label,.sb-label,.insight-banner-title,summary{font-family:Raleway,Arial,sans-serif;font-weight:700}
+a,.link{color:#0079B8}
+header{min-height:76px;height:auto;padding:16px 24px;gap:20px;flex-wrap:wrap;box-shadow:none;border-bottom-color:#009DE4;background:#fff;color:#28232A}
+.rti-logo{display:inline-flex;align-items:center;flex-shrink:0;line-height:0;text-decoration:none}
+.rti-logo img{display:block;height:40px;width:auto;max-width:100%}
+.header-link{color:#0079B8;background:#fff;font-family:Roboto,Arial,sans-serif}
+.header-link:hover{background:#eaf6fc;color:#0079B8}
+.header-badge{background:#009DE4;color:#fff}
+.sidebar{background:#143959;color:#fff}
+.sidebar .sidebar-label,.sidebar .sb-label{color:#7FCDF1}
+.sidebar .item-sub,.sidebar .sb-note,.sidebar .count-label,.sidebar .muted{color:#c3d5e3}
+.sidebar select,.sidebar input,.sidebar select option{background:#143959;color:#fff;border-color:#4a6e90}
+.sidebar .journal-item,.sidebar .item{color:#eaf3f9}
+.sidebar .journal-item:hover,.sidebar .item:hover,.sidebar .journal-item.active,.sidebar .item.active{background:rgba(0,157,228,.18);color:#fff}
+.sidebar .journal-item.active,.sidebar .item.active{border-left-color:#009DE4}
+.sidebar .journal-item-sub,.sidebar .journal-meta{color:#c3d5e3}
+.sidebar a,.sidebar button{color:#7FCDF1}
+.main{background:#f5f8fb;color:#28232A;min-width:0}
+.card,.kpi,.metric-card,.comparison-panel,.insight-banner{box-shadow:none}
+.journal-header,.ent-head,.hero-rti{background:#eaf5fb;color:#28232A;box-shadow:none;border-left-color:#009DE4}
+.journal-title,.ent-title,.hero-rti-title,.intro-grid h3{color:#143959}
+.journal-publisher,.ent-meta{color:#0079B8}
+.intro-grid p,.intro-foot{color:#526779}
+.intro-grid button,.rank-journal,.breadcrumb-btn{color:#0079B8}
+.year-tab.active,.ytab.active,.export-btn{background:#0079B8;color:#fff;border-color:#0079B8}
+.ror{color:#0079B8;background:#eaf5fb;border-color:#b5d8eb}
+.coverage-note{background:#eaf5fb;color:#28232A;border-color:#b5d8eb}
+.coverage-note strong{color:#143959}
+.year-check{color:#526779}
+.year-check select{background:#fff;color:#28232A;border-color:#b5d8eb}
+select option{background:#fff;color:#28232A}
+.warn{color:#946000}
+.delta.pos{color:#16815b}.delta.neg{color:#b73737}
+.methods a{color:#0079B8}
+@media(max-width:720px){header{padding:14px 16px;gap:14px}.rti-logo img{height:32px}.header-nav{gap:8px;flex-wrap:wrap}.header-link{padding:6px 10px}}
+.sidebar .corpus-notice{color:#c3d5e3;border-color:#4a6e90}
+.sidebar .corpus-notice strong,.sidebar .corpus-notice a{color:#7FCDF1}
+.sidebar .corpus-notice summary{color:#c3d5e3}
+.sidebar .client-access-btn{border-color:#4a6e90;color:#7FCDF1}
+@media(max-width:720px){.layout{flex-direction:column}.sidebar{width:100%;max-height:32vh;overflow-y:auto;display:block}.sidebar .journal-list,.sidebar .list{max-height:140px;flex:none}.main{padding:16px;flex:1;min-height:0}}
